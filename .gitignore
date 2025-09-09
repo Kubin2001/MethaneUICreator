@@ -1,0 +1,7 @@
+x64/
+.vs/
+Libs/
+MethaneUICreator.vcxproj
+MethaneUICreator.vcxproj.filters
+MethaneUICreator.vcxproj.user
+*.dll
