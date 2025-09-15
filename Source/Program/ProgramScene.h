@@ -9,11 +9,21 @@ class ProgramScene :public Scene{
 		ClickBoxList btnCreateList;
 		std::vector<Button*> elements;
 		Button* selectedButton = nullptr;
+		Button* editedButton = nullptr;
 		int index = 0;
+		int panelType = 0; //0 no panel 1 Creation Panel 2 Edit Panel  
+
+		std::vector<Button*> editBtnRef;
+		std::vector<TextBox*> editTextRef;
+		std::vector<ClickBox*> editClickRef;
 
 		void ShowPanel();
 
 		void HidePanel();
+
+		void ShowEditPanel(Button* button);
+
+		void HideEditPanel(Button* button);
 
 		void CreateNewElem();
 
