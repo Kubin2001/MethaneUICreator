@@ -3,7 +3,6 @@
 #include <print>
 
 #include "Helpers.h"
-#include "EditFunctions.h"
 
 bool ArgToInt(const std::string& arg, int& intArg) {
 	try {
@@ -143,6 +142,12 @@ void ProgramScene::FrameUpdate(){
 				editedButton->SetTextStartY(val);
 			}
 		}
+		else if (ui->GetClickBox("KeyTextRender")->ConsumeStatus()) {
+			int val = 0;
+			if (ArgToInt(ui->GetTextBox("KeyTextRendertb")->GetText(), val)) {
+				editedButton->SetRenderTextType(val);
+			}
+		}
 		else if (ui->GetClickBox("KeyColor")->ConsumeStatus()) {
 			std::string& R = ui->GetTextBox("KeyColor1")->GetText();
 			std::string& G = ui->GetTextBox("KeyColor2")->GetText();
@@ -156,16 +161,31 @@ void ProgramScene::FrameUpdate(){
 				editedButton->SetColor(argR, argG, argB, argA);
 			}
 		}
+		else if (ui->GetClickBox("KeyBorder")->ConsumeStatus()) {
+			std::string& W = ui->GetTextBox("KeyBorder1")->GetText();
+			std::string& R = ui->GetTextBox("KeyBorder2")->GetText();
+			std::string& G = ui->GetTextBox("KeyBorder3")->GetText();
+			std::string& B = ui->GetTextBox("KeyBorder4")->GetText();
+			int argW = 0;
+			unsigned char argR = 0;
+			unsigned char argG = 0;
+			unsigned char argB = 0;
+			if (ArgToInt(W, argW) && ArgToUCHar(R, argR) && ArgToUCHar(G, argG) && ArgToUCHar(B, argB)) {
+				editedButton->SetBorder(argW, argR, argG, argB);
+			}
+		}
+		else if (ui->GetClickBox("KeyFontColor")->ConsumeStatus()) {
+			std::string& R = ui->GetTextBox("KeyFontColor1")->GetText();
+			std::string& G = ui->GetTextBox("KeyFontColor2")->GetText();
+			std::string& B = ui->GetTextBox("KeyFontColor3")->GetText();
+			unsigned char argR = 0;
+			unsigned char argG = 0;
+			unsigned char argB = 0;
+			if (ArgToUCHar(R, argR) && ArgToUCHar(G, argG) && ArgToUCHar(B, argB)) {
+				editedButton->SetFontColor(argR, argG, argB);
+			}
+		}
 	}
-
-	//for (size_t i = 0; i < editClickRef.size(); i++) {
-	//	if (editClickRef[i]->ConsumeStatus()) {
-	//		if (EditorFunctions::functions.size() > i) {
-	//			EditorFunctions::functions[i](editedButton,editTextRef[i]->GetText());
-	//		}
-	//		break;
-	//	}
-	//}
 
 	MoveSelected();
 }
@@ -260,6 +280,32 @@ void ProgramScene::CreateEditBox(const std::string &name, int &y, const std::str
 	y += 40;
 }
 
+void ProgramScene::CreateTripleEditBox(const std::string& name, int& y, const std::string& text) {
+	ClickBox* cb = ui->CreateClickBox(name, rightPanel->GetRectangle().x + 95
+		, y, 80, 30, nullptr, ui->GetFont("arial12px"), text);
+	SetUpBasicElem(cb);
+	editClickRef.emplace_back(cb);
+	cb->SetHoverFilter(true, 255, 255, 255, 120);
+
+	y += 40;
+	TextBox* tb = ui->CreateTextBox(name + "1",
+		rightPanel->GetRectangle().x + 20, y, 60, 30, nullptr, ui->GetFont("arial12px"));
+	SetUpBasicElem(tb);
+	editTextRef.emplace_back(tb);
+
+	tb = ui->CreateTextBox(name + "2",
+		rightPanel->GetRectangle().x + 90, y, 60, 30, nullptr, ui->GetFont("arial12px"));
+	SetUpBasicElem(tb);
+	editTextRef.emplace_back(tb);
+
+	tb = ui->CreateTextBox(name + "3",
+		rightPanel->GetRectangle().x + 160, y, 60, 30, nullptr, ui->GetFont("arial12px"));
+	SetUpBasicElem(tb);
+	editTextRef.emplace_back(tb);
+	y += 40;
+}
+
+
 void ProgramScene::CreateQuadEditBox(const std::string& name, int& y, const std::string& text) {
 	ClickBox* cb = ui->CreateClickBox(name, rightPanel->GetRectangle().x + 95
 		, y, 80, 30, nullptr, ui->GetFont("arial12px"), text);
@@ -310,8 +356,11 @@ void ProgramScene::ShowEditPanel(Button *button) {
 	CreateEditBox("KeyEditTextSize", y, "TextSize: ");
 	CreateEditBox("KeyEditTextX", y, "Text X: ");
 	CreateEditBox("KeyEditTextY", y, "Text Y: ");
+	CreateEditBox("KeyTextRender", y, "Text Render: ");
 
 	CreateQuadEditBox("KeyColor", y, "Color");
+	CreateQuadEditBox("KeyBorder", y, "Border");
+	CreateTripleEditBox("KeyFontColor", y, "Font Color");
 
 
 	editedButton = button;
