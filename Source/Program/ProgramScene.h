@@ -21,11 +21,12 @@ class ProgramScene :public Scene{
 
 		void HidePanel();
 
-		void CreateEditBox(const std::string& name, int& y, const std::string& text);
+		void CreateEditBox(const std::string& name, int& y, const std::string& text, const std::string& arg1 = "");
 
 		void CreateTripleEditBox(const std::string& name, int& y, const std::string& text);
 
-		void CreateQuadEditBox(const std::string& name, int& y, const std::string& text);
+		void CreateQuadEditBox(const std::string& name, int& y, const std::string& text,
+			const std::string& arg1 = "", const std::string& arg2 = "", const std::string& arg3 = "", const std::string& arg4 = "");
 
 		void ShowEditPanel(Button* button);
 

@@ -266,7 +266,7 @@ void ProgramScene::HidePanel() {
 	panelType = 0;
 }
 
-void ProgramScene::CreateEditBox(const std::string &name, int &y, const std::string &text) {
+void ProgramScene::CreateEditBox(const std::string &name, int &y, const std::string &text, const std::string &arg1) {
 	ClickBox *cb = ui->CreateClickBox(name, rightPanel->GetRectangle().x + 20
 		, y, 80, 30, nullptr, ui->GetFont("arial12px"), text);
 	SetUpBasicElem(cb);
@@ -274,7 +274,7 @@ void ProgramScene::CreateEditBox(const std::string &name, int &y, const std::str
 	cb->SetHoverFilter(true, 255, 255, 255, 120);
 
 	TextBox* tb = ui->CreateTextBox(name + "tb",
-		rightPanel->GetRectangle().x + 120, y, 80, 30, nullptr, ui->GetFont("arial12px"));
+		rightPanel->GetRectangle().x + 120, y, 80, 30, nullptr, ui->GetFont("arial12px"),arg1);
 	SetUpBasicElem(tb);
 	editTextRef.emplace_back(tb);
 	y += 40;
@@ -306,7 +306,8 @@ void ProgramScene::CreateTripleEditBox(const std::string& name, int& y, const st
 }
 
 
-void ProgramScene::CreateQuadEditBox(const std::string& name, int& y, const std::string& text) {
+void ProgramScene::CreateQuadEditBox(const std::string& name, int& y, const std::string& text,
+	const std::string &arg1, const std::string& arg2, const std::string& arg3, const std::string& arg4) {
 	ClickBox* cb = ui->CreateClickBox(name, rightPanel->GetRectangle().x + 95
 		, y, 80, 30, nullptr, ui->GetFont("arial12px"), text);
 	SetUpBasicElem(cb);
@@ -315,22 +316,22 @@ void ProgramScene::CreateQuadEditBox(const std::string& name, int& y, const std:
 
 	y += 40;
 	TextBox* tb = ui->CreateTextBox(name + "1",
-		rightPanel->GetRectangle().x + 20, y, 50, 30, nullptr, ui->GetFont("arial12px"));
+		rightPanel->GetRectangle().x + 20, y, 50, 30, nullptr, ui->GetFont("arial12px"), arg1);
 	SetUpBasicElem(tb);
 	editTextRef.emplace_back(tb);
 
 	 tb = ui->CreateTextBox(name + "2",
-		rightPanel->GetRectangle().x + 80, y, 50, 30, nullptr, ui->GetFont("arial12px"));
+		rightPanel->GetRectangle().x + 80, y, 50, 30, nullptr, ui->GetFont("arial12px"), arg2);
 	SetUpBasicElem(tb);
 	editTextRef.emplace_back(tb);
 
 	tb = ui->CreateTextBox(name + "3",
-		rightPanel->GetRectangle().x + 140, y, 50, 30, nullptr, ui->GetFont("arial12px"));
+		rightPanel->GetRectangle().x + 140, y, 50, 30, nullptr, ui->GetFont("arial12px"), arg3);
 	SetUpBasicElem(tb);
 	editTextRef.emplace_back(tb);
 
 	tb = ui->CreateTextBox(name + "4",
-		rightPanel->GetRectangle().x + 200, y, 50, 30, nullptr, ui->GetFont("arial12px"));
+		rightPanel->GetRectangle().x + 200, y, 50, 30, nullptr, ui->GetFont("arial12px"),arg4);
 	SetUpBasicElem(tb);
 	editTextRef.emplace_back(tb);
 	y += 40;
@@ -341,29 +342,30 @@ void ProgramScene::ShowEditPanel(Button *button) {
 		HideEditPanel(button);
 		return;
 	}
+	editedButton = button;
 	rightPanel->Show();
 
 	int y = rightPanel->GetRectangle().y + 20;
 
-	CreateEditBox("KeyEditName", y, "Key: ");
-	CreateEditBox("KeyEditX", y, "X: ");
-	CreateEditBox("KeyEditY", y, "Y: ");
-	CreateEditBox("KeyEditW", y, "W: ");
-	CreateEditBox("KeyEditH", y, "H: ");
+	CreateEditBox("KeyEditName", y, "Key: ",editedButton->GetName());
+	CreateEditBox("KeyEditX", y, "X: ",std::to_string(editedButton->GetRectangle().x));
+	CreateEditBox("KeyEditY", y, "Y: ", std::to_string(editedButton->GetRectangle().y));
+	CreateEditBox("KeyEditW", y, "W: ", std::to_string(editedButton->GetRectangle().w));
+	CreateEditBox("KeyEditH", y, "H: ", std::to_string(editedButton->GetRectangle().h));
 	CreateEditBox("KeyEditTexture", y, "Texture: ");
 	CreateEditBox("KeyEditFont", y, "Font: ");
-	CreateEditBox("KeyEditText", y, "Text: ");
-	CreateEditBox("KeyEditTextSize", y, "TextSize: ");
-	CreateEditBox("KeyEditTextX", y, "Text X: ");
-	CreateEditBox("KeyEditTextY", y, "Text Y: ");
-	CreateEditBox("KeyTextRender", y, "Text Render: ");
+	CreateEditBox("KeyEditText", y, "Text: ",editedButton->GetText());
+	CreateEditBox("KeyEditTextSize", y, "TextSize: ",std::to_string(editedButton->GetTextScale()));
+	CreateEditBox("KeyEditTextX", y, "Text X: ", std::to_string(editedButton->GetTextStartX()));
+	CreateEditBox("KeyEditTextY", y, "Text Y: ", std::to_string(editedButton->GetTextStartY()));
+	CreateEditBox("KeyTextRender", y, "Text Render: ", std::to_string(editedButton->textRenderType));
 
-	CreateQuadEditBox("KeyColor", y, "Color");
+	CreateQuadEditBox("KeyColor", y, "Color", std::to_string(editedButton->buttonColor[0]),
+		std::to_string(editedButton->buttonColor[1]), std::to_string(editedButton->buttonColor[2]), 
+		std::to_string(editedButton->buttonColor[3]));
 	CreateQuadEditBox("KeyBorder", y, "Border");
 	CreateTripleEditBox("KeyFontColor", y, "Font Color");
 
-
-	editedButton = button;
 	panelType = 2;
 }
 

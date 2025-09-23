@@ -26,6 +26,8 @@ class TexMan {
 		// You need to pass extenstion with . example .png it supports all formats supported by sdl_image IMG_LOAD
 		static bool IsFormatSupported(const std::string& format);
 
+		static bool AddTexture(MT::Texture* tex, const std::string& name);
+
 		static void LoadSingle(const char* filePath, const std::string& name);
 
 		//Loads single folder and uses file names (without extensions) as keys
@@ -41,6 +43,8 @@ class TexMan {
 		static bool DeleteTexture(const std::string& name);
 
 		static Point GetTextureSize(const std::string& name);
+
+		static size_t GetTexturesAmount();
 
 		// Function to split texture into multiple smaller textures at runtime
 		// Original texture needs to have seperator color at higest pixel at the row and cant use it anywere else

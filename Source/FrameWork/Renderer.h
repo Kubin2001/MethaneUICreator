@@ -85,7 +85,7 @@ namespace MT {
 			 std::vector<float> globalVertices;
 
 			 //Agressive Batching Rendering
-			 std::unordered_map<const Texture*, std::vector<float>> renderMap = {};
+			 std::vector<std::vector<float>> agresiveRenderVec = {};
 
 
 
@@ -109,9 +109,9 @@ namespace MT {
 
 			 void RenderCopyPart(const Rect& rect, const Rect& source, const Texture* texture);
 
-			 void RenderCopyEX(const Rect& rect, const Texture* texture, const float rotation);
+			 void RenderCopyEX(const Rect& rect, const Texture* texture, const bool flip = false, const float rotation = 0.0f);
 
-			 void RenderCopyPartEX(const Rect& rect, const Rect& source, const Texture* texture, const float rotation);
+			 void RenderCopyPartEX(const Rect& rect, const Rect& source, const Texture* texture, const bool flip = false, const float rotation = 0.0f);
 
 			 void RenderCopyCircle(const Rect& rect, const Texture* texture, const float radius = 0.5f);
 
@@ -132,6 +132,11 @@ namespace MT {
 			 // Experimental
 			 // Agressive Batching Rendering good for multiple texture tile rendering but does
 			 // not rememeber deepth so new texture can be obscured by an old one 
+			 // Might break or crash not recomemnded in fincisched product
+
+			 //Neds to be called at least once after texture load and after every texture quantity change
+			 void AgresiveRenderCopySetUp();
+
 			 void AgressiveRenderCopy(const Rect& rect, const Texture* texture);
 
 			 void AgressiveRenderCopyPresent(bool clearVectors = true);

@@ -57,6 +57,14 @@ bool TexMan::IsFormatSupported(const std::string& format) {
 	return false;
 }
 
+bool TexMan::AddTexture(MT::Texture* tex, const std::string& name) {
+	if (Textures.find(name) != Textures.end()) {
+		return false;
+	}
+	Textures[name] = tex;
+	return true;
+}
+
 void TexMan::LoadSingle(const char* filePath, const std::string& name) {
 	if (Textures.find(name) != Textures.end()) {
 		std::cout << "Texture: " << name << " is already loaded\n";
@@ -127,6 +135,10 @@ Point TexMan::GetTextureSize(const std::string& name) {
 	p.x = it->second->w;
 	p.y = it->second->h;
 	return p;
+}
+
+size_t TexMan::GetTexturesAmount() {
+	return Textures.size();
 }
 
 SDL_Surface* CopyVectorToSurface(std::vector<std::vector<SDL_Color>> &copySurfData) {

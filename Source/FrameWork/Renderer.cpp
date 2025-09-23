@@ -8,6 +8,7 @@
 #include <SDL_image.h>
 #include <chrono>
 #include "Colision.h"
+#include "TextureManager.h"
 
 SDL_Surface* FlipSurfaceVertical(SDL_Surface* surface) {
     SDL_Surface* flipped = SDL_CreateRGBSurfaceWithFormat(0, surface->w, surface->h,
@@ -425,7 +426,7 @@ void MT::Renderer::RenderRect(const Rect& rect, const Color& col, const int alph
 
     float floatAlpha = float(alpha) / 255;
     // pos.x, pos.y, col.r, col.g, col.b
-    float vertices[] = {
+    const float vertices[] = {
         x,     y - h, fR, fG, fB, floatAlpha,
         x,     y,     fR, fG, fB, floatAlpha,
         x + w, y - h, fR, fG, fB, floatAlpha,
@@ -433,8 +434,10 @@ void MT::Renderer::RenderRect(const Rect& rect, const Color& col, const int alph
         x + w, y,     fR, fG, fB, floatAlpha,
         x + w, y - h, fR, fG, fB, floatAlpha
     };
-
-    globalVertices.insert(globalVertices.end(), std::begin(vertices), std::end(vertices));
+    constexpr int N = 36;
+    const size_t old = globalVertices.size();
+    globalVertices.resize(old + N);
+    std::memcpy(globalVertices.data() + old, vertices, N * sizeof(float));
 }
 
 void MT::Renderer::RenderRectEX(const Rect& rect, const Color &col, const float rotation, const int alpha) {
@@ -488,7 +491,10 @@ void MT::Renderer::RenderRectEX(const Rect& rect, const Color &col, const float 
         p4.x, p4.y, fR, fG, fB, floatAlpha,
         p5.x, p5.y, fR, fG, fB, floatAlpha,
     };
-    globalVertices.insert(globalVertices.end(), std::begin(vertex), std::end(vertex));
+    constexpr int N = 36;
+    const size_t old = globalVertices.size();
+    globalVertices.resize(old + N);
+    std::memcpy(globalVertices.data() + old, vertex, N * sizeof(float));
 }
 
 
@@ -568,7 +574,7 @@ void MT::Renderer::RenderCopy(const Rect& rect, const Texture* texture){
     currentSize = renderCopySize; 
 
     //    // pos.x, pos.y tex.u, tex.v
-    float verticles[] = {
+    const float verticles[] = {
         x,     y - h, 0.0f, 0.0f,texture->alpha,
         x,     y,     0.0f, 1.0f,texture->alpha,
         x + w, y - h, 1.0f, 0.0f,texture->alpha,
@@ -576,7 +582,11 @@ void MT::Renderer::RenderCopy(const Rect& rect, const Texture* texture){
         x + w, y,     1.0f, 1.0f,texture->alpha,
         x + w, y - h, 1.0f, 0.0f,texture->alpha
     };
-    globalVertices.insert(globalVertices.end(), std::begin(verticles), std::end(verticles));
+
+    constexpr int N = 30;
+    const size_t old = globalVertices.size();
+    globalVertices.resize(old + N);
+    std::memcpy(globalVertices.data() + old, verticles, N * sizeof(float));
 }
 
 void MT::Renderer::RenderCopyPart(const Rect& rect, const Rect& source, const Texture *texture) {
@@ -625,10 +635,13 @@ void MT::Renderer::RenderCopyPart(const Rect& rect, const Rect& source, const Te
         x + w, y,     u1, v1,texture->alpha,
         x + w, y - h, u1, v0,texture->alpha
     };
-    globalVertices.insert(globalVertices.end(), std::begin(verticles), std::end(verticles));
+    constexpr int N = 30;
+    const size_t old = globalVertices.size();
+    globalVertices.resize(old + N);
+    std::memcpy(globalVertices.data() + old, verticles, N * sizeof(float));
 }
 
-void MT::Renderer::RenderCopyEX(const Rect& rect, const Texture* texture, const float rotation) {
+void MT::Renderer::RenderCopyEX(const Rect& rect, const Texture* texture, const bool flip, const float rotation) {
     if (!texture) { return; }
     if (currentTexture != texture->texture) {
         RenderPresent(false);
@@ -665,19 +678,37 @@ void MT::Renderer::RenderCopyEX(const Rect& rect, const Texture* texture, const 
     glm::vec2 p4 = RotateAndTranslate2D(halfW, halfH, center, cosA, sinA);
     glm::vec2 p5 = RotateAndTranslate2D(halfW, -halfH, center, cosA, sinA);
 
-    const float vertex[] = {
-        p0.x, p0.y, 0.0f, 0.0f,texture->alpha,
-        p1.x, p1.y, 0.0f, 1.0f,texture->alpha,
-        p2.x, p2.y, 1.0f, 1.0f,texture->alpha,
-        p3.x, p3.y, 0.0f, 0.0f,texture->alpha,
-        p4.x, p4.y, 1.0f, 1.0f,texture->alpha,
-        p5.x, p5.y, 1.0f, 0.0f,texture->alpha
-    };
-
-    globalVertices.insert(globalVertices.end(), std::begin(vertex), std::end(vertex));
+    if (flip) {
+        const float vertex[] = {
+            p0.x, p0.y, 1.0f, 0.0f, texture->alpha,
+            p1.x, p1.y, 1.0f, 1.0f, texture->alpha,
+            p2.x, p2.y, 0.0f, 1.0f, texture->alpha,
+            p3.x, p3.y, 1.0f, 0.0f, texture->alpha,
+            p4.x, p4.y, 0.0f, 1.0f, texture->alpha,
+            p5.x, p5.y, 0.0f, 0.0f, texture->alpha
+        };
+        constexpr int N = 30;
+        const size_t old = globalVertices.size();
+        globalVertices.resize(old + N);
+        std::memcpy(globalVertices.data() + old, vertex, N * sizeof(float));
+    }
+    else {
+        const float vertex[] = {
+            p0.x, p0.y, 0.0f, 0.0f,texture->alpha,
+            p1.x, p1.y, 0.0f, 1.0f,texture->alpha,
+            p2.x, p2.y, 1.0f, 1.0f,texture->alpha,
+            p3.x, p3.y, 0.0f, 0.0f,texture->alpha,
+            p4.x, p4.y, 1.0f, 1.0f,texture->alpha,
+            p5.x, p5.y, 1.0f, 0.0f,texture->alpha
+        };
+        constexpr int N = 30;
+        const size_t old = globalVertices.size();
+        globalVertices.resize(old + N);
+        std::memcpy(globalVertices.data() + old, vertex, N * sizeof(float));
+    }
 }
 
-void MT::Renderer::RenderCopyPartEX(const Rect& rect, const Rect& source, const Texture* texture, const float rotation) {
+void MT::Renderer::RenderCopyPartEX(const Rect& rect, const Rect& source, const Texture* texture, const bool flip, const float rotation) {
     if (!texture) { return; }
     if (currentTexture != texture->texture) {
         RenderPresent(false);
@@ -725,15 +756,35 @@ void MT::Renderer::RenderCopyPartEX(const Rect& rect, const Rect& source, const 
     glm::vec2 p4 = RotateAndTranslate2D(halfW, halfH, center, cosA, sinA);
     glm::vec2 p5 = RotateAndTranslate2D(halfW, -halfH, center, cosA, sinA);
 
-    const float vertex[] = {
-        p0.x, p0.y, u0, v0,texture->alpha,
-        p1.x, p1.y, u0, v1,texture->alpha,
-        p2.x, p2.y, u1, v1,texture->alpha,
-        p3.x, p3.y, u0, v0,texture->alpha,
-        p4.x, p4.y, u1, v1,texture->alpha,
-        p5.x, p5.y, u1, v0,texture->alpha
-    };
-    globalVertices.insert(globalVertices.end(), std::begin(vertex), std::end(vertex));
+    if (flip) {
+        const float vertex[] = {
+            p0.x, p0.y, u1, v0,texture->alpha,
+            p1.x, p1.y, u1, v1,texture->alpha,
+            p2.x, p2.y, u0, v1,texture->alpha,
+            p3.x, p3.y, u1, v0,texture->alpha,
+            p4.x, p4.y, u0, v1,texture->alpha,
+            p5.x, p5.y, u0, v0,texture->alpha
+        };
+        constexpr int N = 30;
+        const size_t old = globalVertices.size();
+        globalVertices.resize(old + N);
+        std::memcpy(globalVertices.data() + old, vertex, N * sizeof(float));
+    }
+    else {
+        const float vertex[] = {
+            p0.x, p0.y, u0, v0,texture->alpha,
+            p1.x, p1.y, u0, v1,texture->alpha,
+            p2.x, p2.y, u1, v1,texture->alpha,
+            p3.x, p3.y, u0, v0,texture->alpha,
+            p4.x, p4.y, u1, v1,texture->alpha,
+            p5.x, p5.y, u1, v0,texture->alpha
+        };
+
+        constexpr int N = 30;
+        const size_t old = globalVertices.size();
+        globalVertices.resize(old + N);
+        std::memcpy(globalVertices.data() + old, vertex, N * sizeof(float));
+    }
 }
 
 
@@ -762,7 +813,7 @@ void MT::Renderer::RenderCopyCircle(const Rect& rect, const Texture* texture, co
     currentSize = renderCopyCircleSize;
 
     // pos.x, pos.y,radius tex.u, tex.v, alpha
-    float verticles[] = {
+    float vertex[] = {
         x,     y - h,radius, 0.0f, 0.0f, texture->alpha,
         x,     y,    radius, 0.0f, 1.0f, texture->alpha,
         x + w, y - h,radius, 1.0f, 0.0f, texture->alpha,
@@ -770,7 +821,10 @@ void MT::Renderer::RenderCopyCircle(const Rect& rect, const Texture* texture, co
         x + w, y,    radius, 1.0f, 1.0f, texture->alpha,
         x + w, y - h,radius, 1.0f, 0.0f, texture->alpha
     };
-    globalVertices.insert(globalVertices.end(), std::begin(verticles), std::end(verticles));
+    constexpr int N = 36;
+    const size_t old = globalVertices.size();
+    globalVertices.resize(old + N);
+    std::memcpy(globalVertices.data() + old, vertex, N * sizeof(float));
 }
 
 void MT::Renderer::RenderCircle(const Rect& rect, const Color& col, const unsigned char alpha, const float radius) {
@@ -796,7 +850,7 @@ void MT::Renderer::RenderCircle(const Rect& rect, const Color& col, const unsign
 
 
     // pos.x, pos.y, pos.z,radius  col.r, col.g, col.b col.a
-    const float vertices[] = {
+    const float vertex[] = {
         x,     y - h, radius, fR, fG, fB, fA,
         x,     y    , radius, fR, fG, fB, fA,
         x + w, y - h, radius, fR, fG, fB, fA,
@@ -805,7 +859,10 @@ void MT::Renderer::RenderCircle(const Rect& rect, const Color& col, const unsign
         x + w, y - h, radius, fR, fG, fB, fA
     };
 
-    globalVertices.insert(globalVertices.end(), std::begin(vertices), std::end(vertices));
+    constexpr int N = 42;
+    const size_t old = globalVertices.size();
+    globalVertices.resize(old + N);
+    std::memcpy(globalVertices.data() + old, vertex, N * sizeof(float));
 }
 
 
@@ -837,7 +894,7 @@ void MT::Renderer::RenderCopyFiltered(const Rect& rect, const Texture* texture, 
     const float fB = float(filter.B) / 255;
 
     // pos.x, pos.y, tex.u, tex.v col.r,col.g,col.b
-    const float verticles[] = {
+    const float vertex[] = {
         x,     y - h, 0.0f, 0.0f, fR, fG, fB, texture->alpha,
         x,     y,     0.0f, 1.0f, fR, fG, fB, texture->alpha,
         x + w, y - h, 1.0f, 0.0f, fR, fG, fB, texture->alpha,
@@ -845,7 +902,10 @@ void MT::Renderer::RenderCopyFiltered(const Rect& rect, const Texture* texture, 
         x + w, y,     1.0f, 1.0f, fR, fG, fB, texture->alpha,
         x + w, y - h, 1.0f, 0.0f, fR, fG, fB, texture->alpha
     };
-    globalVertices.insert(globalVertices.end(), std::begin(verticles), std::end(verticles));
+    constexpr int N = 48;
+    const size_t old = globalVertices.size();
+    globalVertices.resize(old + N);
+    std::memcpy(globalVertices.data() + old, vertex, N * sizeof(float));
 }
 
 void MT::Renderer::RenderCopyPartFiltered(const Rect& rect, const Rect& source, const Texture* texture, const Color& filter) {
@@ -886,7 +946,7 @@ void MT::Renderer::RenderCopyPartFiltered(const Rect& rect, const Rect& source, 
     const float v0 = v1 - tempSourceH;
 
     // pos.x, pos.y, tex.u, tex.v col.r,col.g,col.b
-    const float verticles[] = {
+    const float vertex[] = {
         x,     y - h, u0, v0, fR, fG, fB, texture->alpha,
         x,     y,     u0, v1, fR, fG, fB, texture->alpha,
         x + w, y - h, u1, v0, fR, fG, fB, texture->alpha,
@@ -894,7 +954,10 @@ void MT::Renderer::RenderCopyPartFiltered(const Rect& rect, const Rect& source, 
         x + w, y,     u1, v1, fR, fG, fB, texture->alpha,
         x + w, y - h, u1, v0, fR, fG, fB, texture->alpha
     };
-    globalVertices.insert(globalVertices.end(), std::begin(verticles), std::end(verticles));
+    constexpr int N = 48;
+    const size_t old = globalVertices.size();
+    globalVertices.resize(old + N);
+    std::memcpy(globalVertices.data() + old, vertex, N * sizeof(float));
 }
 
 
@@ -950,6 +1013,9 @@ void MT::Renderer::Resize(const unsigned int w, const unsigned int h) {
     glViewport(0, 0, W, H);
 }
 
+void MT::Renderer::AgresiveRenderCopySetUp() {
+    agresiveRenderVec.resize(TexMan::GetTexturesAmount() +1);
+}
 
 void MT::Renderer::AgressiveRenderCopy(const Rect& rect, const Texture* texture) {
     if (!texture) { return; }
@@ -971,17 +1037,11 @@ void MT::Renderer::AgressiveRenderCopy(const Rect& rect, const Texture* texture)
         x + w, y - h, 1.0f, 0.0f,texture->alpha
     };
 
-    if (renderMap.find(texture) == renderMap.end()) {
-        renderMap.emplace(
-            texture,
-            std::vector<float>(std::begin(verticles), std::end(verticles))
-        );
-    }
-    else {
-        renderMap[texture].insert(renderMap[texture].end(), std::begin(verticles), std::end(verticles));
-    }
-
-
+    constexpr int N = 30;
+    std::vector<float>& vec = agresiveRenderVec[texture->texture];
+    const size_t old = vec.size();
+    vec.resize(old + N);
+    std::memcpy(vec.data() + old, verticles, N * sizeof(float));
 }
 
 void MT::Renderer::AgressiveRenderCopyPresent(bool clearVectors) {
@@ -990,16 +1050,13 @@ void MT::Renderer::AgressiveRenderCopyPresent(bool clearVectors) {
     glUseProgram(renderCopyId);
 
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    for (auto& mapElem : renderMap) {
-        glBindTexture(GL_TEXTURE_2D, mapElem.first->texture);
-        auto& mapElemVec = mapElem.second;
-        glBufferData(GL_ARRAY_BUFFER, mapElemVec.size() * sizeof(float), mapElemVec.data(), GL_DYNAMIC_DRAW);
-
-        glDrawArrays(GL_TRIANGLES, 0, mapElemVec.size() / renderCircleSize);
-    }
-
-    if (clearVectors) {
-        renderMap.clear();
+    for (size_t i = 0; i < agresiveRenderVec.size(); i++) {
+        std::vector<float>& vec = agresiveRenderVec[i];
+        if (vec.empty()) { continue; }
+        glBindTexture(GL_TEXTURE_2D, i);
+        glBufferData(GL_ARRAY_BUFFER, vec.size() * sizeof(float),  vec.data(), GL_DYNAMIC_DRAW);
+        glDrawArrays(GL_TRIANGLES, 0, vec.size() / renderCopySize);
+        vec.clear();
     }
 
     if (prevProgram) glUseProgram(prevProgram);
