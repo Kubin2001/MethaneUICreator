@@ -9,7 +9,7 @@
 
 
 class TexMan {
-	private:
+	public:
 		static std::unordered_map<std::string, MT::Texture*> Textures;
 		static std::vector<std::string> SupportedFormats;
 		static MT::Renderer* renderer;

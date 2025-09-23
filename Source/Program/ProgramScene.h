@@ -23,7 +23,8 @@ class ProgramScene :public Scene{
 
 		void CreateEditBox(const std::string& name, int& y, const std::string& text, const std::string& arg1 = "");
 
-		void CreateTripleEditBox(const std::string& name, int& y, const std::string& text);
+		void CreateTripleEditBox(const std::string& name, int& y, const std::string& text,
+			const std::string& arg1 = "", const std::string& arg2 = "", const std::string& arg3 = "");
 
 		void CreateQuadEditBox(const std::string& name, int& y, const std::string& text,
 			const std::string& arg1 = "", const std::string& arg2 = "", const std::string& arg3 = "", const std::string& arg4 = "");

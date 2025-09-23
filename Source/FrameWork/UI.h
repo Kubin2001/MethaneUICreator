@@ -211,7 +211,7 @@ class ClickBoxList {
 
 // To propelly start the UI you need to pleace manage input function in event loop and render in rendering loop
 class UI{
-private:
+public:
 	MT::Renderer* renderer;
 	LocalTexMan* localTexMan = nullptr;
 
