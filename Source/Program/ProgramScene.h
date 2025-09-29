@@ -2,13 +2,26 @@
 
 #include "SceneManager.h"
 
+struct CreatedElement {
+	Button* btn = nullptr;
+	int type = 0; // 0 empty /1 btn /2 tb /3 cb/ 4 popupBox
+
+	CreatedElement() = default;
+
+	CreatedElement(Button* button, const int type) {
+		this->btn = button;
+		this->type = type;
+	}
+};
+
 
 class ProgramScene :public Scene{
 	private:
+		ClickBox* runButton = nullptr;
 		Button* rightPanel = nullptr;
 		ClickBoxList btnCreateList;
-		std::vector<Button*> elements;
-		Button* selectedButton = nullptr;
+		std::vector<CreatedElement> elements;
+		CreatedElement selectedButton;
 		Button* editedButton = nullptr;
 		int index = 0;
 		int panelType = 0; //0 no panel 1 Creation Panel 2 Edit Panel  
@@ -33,7 +46,7 @@ class ProgramScene :public Scene{
 
 		void HideEditPanel(Button* button);
 
-		void CreateNewElem();
+		void CreateNewElem(const int type);
 
 		void MoveSelected();
 

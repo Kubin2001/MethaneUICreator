@@ -47,6 +47,10 @@ void ProgramScene::Init(MT::Renderer* renderer, UI* ui){
 	rightPanel->SetColor(30, 30, 30);
 	rightPanel->SetBorder(2, 0, 100, 200);
 	rightPanel->Hide();
+
+	runButton = ui->CreateClickBox("RunCB",5,5,30,30,TexMan::GetTex("runBtn"));
+	runButton->SetBorder(1, 100, 100, 230);
+	runButton->SetHoverFilter(true, 255, 255, 255, 120);
 }
 
 void ProgramScene::LogicUpdate(){}
@@ -65,19 +69,19 @@ void ProgramScene::FrameUpdate(){
 	}
 	if (btnCreateList.IsExpanded()) {
 		if (btnCreateList[0]->ConsumeStatus()) {
-			CreateNewElem();
+			CreateNewElem(1);
 			return;
 		}
 		if (btnCreateList[1]->ConsumeStatus()) {
-			CreateNewElem();
+			CreateNewElem(2);
 			return;
 		}
 		if (btnCreateList[2]->ConsumeStatus()) {
-			CreateNewElem();
+			CreateNewElem(3);
 			return;
 		}
 		if (btnCreateList[3]->ConsumeStatus()) {
-			CreateNewElem();
+			CreateNewElem(4);
 			return;
 		}
 	}
@@ -207,14 +211,14 @@ void ProgramScene::Input(SDL_Event& event){
 		SDL_GetMouseState(&x, &y);
 		MT::Rect mouseRect{ x,y,1,1 };
 		if (event.button.button == SDL_BUTTON_LEFT) {;
-			if (selectedButton != nullptr) {
+			if (selectedButton.btn != nullptr) {
 				elements.emplace_back(selectedButton);
-				selectedButton = nullptr;
+				selectedButton.btn = nullptr;
 			}
 			else {
 				for (auto& it : elements) {
-					if (it->GetRectangle().IsColliding(mouseRect)) {
-						selectedButton = it;
+					if (it.btn->GetRectangle().IsColliding(mouseRect)) {
+						selectedButton.btn = it.btn;
 						break;
 					}
 				}
@@ -224,8 +228,8 @@ void ProgramScene::Input(SDL_Event& event){
 			if (panelType == 1) {return;}
 
 			for (auto& it : elements) {
-				if (it->GetRectangle().IsColliding(mouseRect)) {
-					ShowEditPanel(it);
+				if (it.btn->GetRectangle().IsColliding(mouseRect)) {
+					ShowEditPanel(it.btn);
 				}
 			}
 		}
@@ -414,19 +418,20 @@ void ProgramScene::HideEditPanel(Button* button) {
 	panelType = 0;
 }
 
-void ProgramScene::CreateNewElem() {
-	if (selectedButton != nullptr) { return; }
+void ProgramScene::CreateNewElem(const int type) {
+	if (selectedButton.btn != nullptr) { return; }
 	index++;
 	int x, y;
 	SDL_GetMouseState(&x, &y);
-	selectedButton = ui->CreateButton("btn" + std::to_string(index), x - 50, y - 50, 100, 100);
+	selectedButton.btn = ui->CreateButton("btn" + std::to_string(index), x - 50, y - 50, 100, 100);
+	selectedButton.type = type;
 	HidePanel();
 }
 
 void ProgramScene::MoveSelected() {
-	if (selectedButton == nullptr) { return; }
+	if (selectedButton.btn == nullptr) { return; }
 	int x, y;
 	SDL_GetMouseState(&x, &y);
-	selectedButton->GetRectangle().x = x - (selectedButton->GetRectangle().w / 2);
-	selectedButton->GetRectangle().y = y - (selectedButton->GetRectangle().h / 2);
+	selectedButton.btn->GetRectangle().x = x - (selectedButton.btn->GetRectangle().w / 2);
+	selectedButton.btn->GetRectangle().y = y - (selectedButton.btn->GetRectangle().h / 2);
 }
