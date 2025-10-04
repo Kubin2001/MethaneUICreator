@@ -24,11 +24,15 @@ class ProgramScene :public Scene{
 		CreatedElement selectedButton;
 		Button* editedButton = nullptr;
 		int index = 0;
-		int panelType = 0; //0 no panel 1 Creation Panel 2 Edit Panel  
+		int panelType = 0; //0 no panel 1 Creation Panel 2 Edit Panel  3 run panel
 
 		std::vector<Button*> editBtnRef;
 		std::vector<TextBox*> editTextRef;
 		std::vector<ClickBox*> editClickRef;
+
+		std::vector<Button*> runBtnRef;
+		std::vector<TextBox*> runTextRef;
+		std::vector<ClickBox*> runClickRef;
 
 		void ShowPanel();
 
@@ -45,6 +49,10 @@ class ProgramScene :public Scene{
 		void ShowEditPanel(Button* button);
 
 		void HideEditPanel(Button* button);
+
+		void ShowRunPanel();
+
+		void HideRunPanel();
 
 		void CreateNewElem(const int type);
 

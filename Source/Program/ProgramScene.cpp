@@ -56,6 +56,9 @@ void ProgramScene::Init(MT::Renderer* renderer, UI* ui){
 void ProgramScene::LogicUpdate(){}
 
 void ProgramScene::FrameUpdate(){
+	if (runButton->ConsumeStatus()) {
+		ShowRunPanel();
+	}
 	if (btnCreateList.Main() != nullptr) {
 		if (btnCreateList.Main()->ConsumeStatus()) {
 			if (btnCreateList.IsExpanded()) {
@@ -85,7 +88,23 @@ void ProgramScene::FrameUpdate(){
 			return;
 		}
 	}
-	if (ui->GetClickBox("KeyEditName") != nullptr) {
+	if (panelType == 1) {
+		if (ui->GetClickBox("BackRgb")->ConsumeStatus()) {
+			std::string& R = ui->GetTextBox("BackRgb1")->GetText();
+			std::string& G = ui->GetTextBox("BackRgb2")->GetText();
+			std::string& B = ui->GetTextBox("BackRgb3")->GetText();
+			unsigned char argR = 0;
+			unsigned char argG = 0;
+			unsigned char argB = 0;
+			if (ArgToUCHar(R, argR) && ArgToUCHar(G, argG) && ArgToUCHar(B, argB)) {
+				Global::defaultDrawColor[0] = argR;
+				Global::defaultDrawColor[1] = argG;
+				Global::defaultDrawColor[2] = argB;
+			}
+		}
+	}
+
+	else if (panelType == 2) {
 		if (ui->GetClickBox("KeyEditName")->ConsumeStatus()) {
 			editedButton->SetName(ui->GetTextBox("KeyEditNametb")->GetText());
 		}
@@ -263,12 +282,32 @@ void ProgramScene::ShowPanel() {
 		it->SetRenderTextType(2);
 		it->SetHoverFilter(true, 255, 255, 255, 120);
 	}
+	y = 100;
+
+	std::string R = std::to_string(Global::defaultDrawColor[0]);
+	std::string G = std::to_string(Global::defaultDrawColor[1]);
+	std::string B = std::to_string(Global::defaultDrawColor[2]);
+
+	CreateTripleEditBox("BackRgb", y, "BackGround", R, G, B);
+
 	panelType = 1;
 }
 
 void ProgramScene::HidePanel() {
 	rightPanel->Hide();
 	btnCreateList.Clear();
+	for (auto& btn : editBtnRef) {
+		ui->DeleteButton(btn->GetName());
+	}
+	for (auto& btn : editTextRef) {
+		ui->DeleteTextBox(btn->GetName());
+	}
+	for (auto& btn : editClickRef) {
+		ui->DeleteClickBox(btn->GetName());
+	}
+	editBtnRef.clear();
+	editTextRef.clear();
+	editClickRef.clear();
 	panelType = 0;
 }
 
@@ -415,6 +454,40 @@ void ProgramScene::HideEditPanel(Button* button) {
 	editTextRef.clear();
 	editClickRef.clear();
 	editedButton = nullptr;
+	panelType = 0;
+}
+
+void ProgramScene::ShowRunPanel() {
+	HidePanel();
+	HideEditPanel(editedButton);
+	runButton->Hide();
+	runButton->TurnOff();
+
+	for (auto& it : elements) {
+		switch(it.type){
+			case 1:
+				ui->CreateButton(it.btn->name + "R", it.btn->GetRectangle().x, it.btn->GetRectangle().y
+					,it.btn->GetRectangle().w, it.btn->GetRectangle().h);
+				break;
+			case 2:
+				ui->CreateTextBox(it.btn->name + "R", it.btn->GetRectangle().x, it.btn->GetRectangle().y
+					, it.btn->GetRectangle().w, it.btn->GetRectangle().h);
+				break;
+			case 3:
+				ui->CreateClickBox(it.btn->name + "R", it.btn->GetRectangle().x, it.btn->GetRectangle().y
+					, it.btn->GetRectangle().w, it.btn->GetRectangle().h);
+				break;
+			case 4:
+				ui->CreatePopUpBox(it.btn->name + "R",120, it.btn->GetRectangle().x, it.btn->GetRectangle().y
+					, it.btn->GetRectangle().w, it.btn->GetRectangle().h);
+				break;
+		}
+	}
+
+	panelType = 3;
+}
+
+void ProgramScene::HideRunPanel() {
 	panelType = 0;
 }
 
