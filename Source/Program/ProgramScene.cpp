@@ -274,7 +274,7 @@ void ProgramScene::ShowPanel() {
 	cb->SetBorder(2, 0, 100, 200);
 	cb->SetRenderTextType(2);
 	cb->SetHoverFilter(true, 255, 255, 255, 120);
-	btnCreateList.Innit(ui, cb, w, h, 30, 30, 30, { "Button","Click Box", "Massage Box", "Pop Up Box" }, 1);
+	btnCreateList.Innit(ui, cb, w, h, 30, 30, 30, { "Button","Click Box", "Text Box", "Pop Up Box" }, 1);
 
 	for (auto& it : btnCreateList.GetAll()) {
 		it->SetColor(30, 30, 30);
@@ -458,29 +458,80 @@ void ProgramScene::HideEditPanel(Button* button) {
 }
 
 void ProgramScene::ShowRunPanel() {
+	if (panelType == 3) {
+		HideRunPanel();
+		return;
+	}
 	HidePanel();
 	HideEditPanel(editedButton);
-	runButton->Hide();
-	runButton->TurnOff();
+	runButton->SetTexture(TexMan::GetTex("pauseBtn"));
 
 	for (auto& it : elements) {
+		it.btn->Hide();
+		Button* btn = it.btn;
+		MT::Rect& rect = btn->GetRectangle();
 		switch(it.type){
-			case 1:
-				ui->CreateButton(it.btn->name + "R", it.btn->GetRectangle().x, it.btn->GetRectangle().y
-					,it.btn->GetRectangle().w, it.btn->GetRectangle().h);
+			case 1: {
+				Button* cBtn = ui->CreateButton(btn->name + "R", rect.x, rect.y, rect.w, rect.h);
+				cBtn->SetTexture(btn->GetTexture());
+				cBtn->SetFont(btn->GetFont());
+				cBtn->SetText(btn->GetText());
+				cBtn->SetTextScale(btn->GetTextScale());
+				cBtn->SetTextStartX(btn->GetTextStartX());
+				cBtn->SetTextStartY(btn->GetTextStartY());
+				cBtn->SetRenderTextType(btn->textRenderType);
+				cBtn->SetColor(btn->buttonColor[0], btn->buttonColor[1], btn->buttonColor[2], btn->buttonColor[3]);
+				cBtn->SetBorder(btn->borderThickness, btn->borderRGB[0], btn->borderRGB[1], btn->borderRGB[2]);
+				cBtn->SetFontColor(btn->fontRGB[0], btn->fontRGB[1], btn->fontRGB[2]);
+				runBtnRef.emplace_back(cBtn);
 				break;
-			case 2:
-				ui->CreateTextBox(it.btn->name + "R", it.btn->GetRectangle().x, it.btn->GetRectangle().y
-					, it.btn->GetRectangle().w, it.btn->GetRectangle().h);
+			}
+
+			case 2: {
+				ClickBox* cBtn = ui->CreateClickBox(btn->name + "R", rect.x, rect.y, rect.w, rect.h);
+				cBtn->SetTexture(btn->GetTexture());
+				cBtn->SetFont(btn->GetFont());
+				cBtn->SetText(btn->GetText());
+				cBtn->SetTextScale(btn->GetTextScale());
+				cBtn->SetTextStartX(btn->GetTextStartX());
+				cBtn->SetTextStartY(btn->GetTextStartY());
+				cBtn->SetRenderTextType(btn->textRenderType);
+				cBtn->SetColor(btn->buttonColor[0], btn->buttonColor[1], btn->buttonColor[2], btn->buttonColor[3]);
+				cBtn->SetBorder(btn->borderThickness, btn->borderRGB[0], btn->borderRGB[1], btn->borderRGB[2]);
+				cBtn->SetFontColor(btn->fontRGB[0], btn->fontRGB[1], btn->fontRGB[2]);
+				runClickRef.emplace_back(cBtn);
 				break;
-			case 3:
-				ui->CreateClickBox(it.btn->name + "R", it.btn->GetRectangle().x, it.btn->GetRectangle().y
-					, it.btn->GetRectangle().w, it.btn->GetRectangle().h);
+			}
+			case 3: {
+				TextBox* cBtn = ui->CreateTextBox(btn->name + "R", rect.x, rect.y, rect.w, rect.h);
+				cBtn->SetTexture(btn->GetTexture());
+				cBtn->SetFont(btn->GetFont());
+				cBtn->SetText(btn->GetText());
+				cBtn->SetTextScale(btn->GetTextScale());
+				cBtn->SetTextStartX(btn->GetTextStartX());
+				cBtn->SetTextStartY(btn->GetTextStartY());
+				cBtn->SetRenderTextType(btn->textRenderType);
+				cBtn->SetColor(btn->buttonColor[0], btn->buttonColor[1], btn->buttonColor[2], btn->buttonColor[3]);
+				cBtn->SetBorder(btn->borderThickness, btn->borderRGB[0], btn->borderRGB[1], btn->borderRGB[2]);
+				cBtn->SetFontColor(btn->fontRGB[0], btn->fontRGB[1], btn->fontRGB[2]);
+				runTextRef.emplace_back(cBtn);
 				break;
-			case 4:
-				ui->CreatePopUpBox(it.btn->name + "R",120, it.btn->GetRectangle().x, it.btn->GetRectangle().y
-					, it.btn->GetRectangle().w, it.btn->GetRectangle().h);
+			}
+			case 4: {
+				PopUpBox* cBtn = ui->CreatePopUpBox(btn->name + "R", 120, rect.x, rect.y, rect.w, rect.h);
+				cBtn->SetTexture(btn->GetTexture());
+				cBtn->SetFont(btn->GetFont());
+				cBtn->SetText(btn->GetText());
+				cBtn->SetTextScale(btn->GetTextScale());
+				cBtn->SetTextStartX(btn->GetTextStartX());
+				cBtn->SetTextStartY(btn->GetTextStartY());
+				cBtn->SetRenderTextType(btn->textRenderType);
+				cBtn->SetColor(btn->buttonColor[0], btn->buttonColor[1], btn->buttonColor[2], btn->buttonColor[3]);
+				cBtn->SetBorder(btn->borderThickness, btn->borderRGB[0], btn->borderRGB[1], btn->borderRGB[2]);
+				cBtn->SetFontColor(btn->fontRGB[0], btn->fontRGB[1], btn->fontRGB[2]);
+				runPopUpRef.emplace_back(cBtn);
 				break;
+			}
 		}
 	}
 
@@ -488,6 +539,23 @@ void ProgramScene::ShowRunPanel() {
 }
 
 void ProgramScene::HideRunPanel() {
+	runButton->SetTexture(TexMan::GetTex("runBtn"));
+	for (auto& it : elements) {
+		it.btn->Show();
+	}
+	for (auto& it : runBtnRef) {
+		ui->DeleteAnyElem(it->GetName());
+	}
+	for (auto& it : runTextRef) {
+		ui->DeleteAnyElem(it->GetName());
+	}
+	for (auto& it : runClickRef) {
+		ui->DeleteAnyElem(it->GetName());
+
+	}
+	for (auto& it : runPopUpRef) {
+		ui->DeleteAnyElem(it->GetName());
+	}
 	panelType = 0;
 }
 

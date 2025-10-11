@@ -33,6 +33,7 @@ class ProgramScene :public Scene{
 		std::vector<Button*> runBtnRef;
 		std::vector<TextBox*> runTextRef;
 		std::vector<ClickBox*> runClickRef;
+		std::vector<PopUpBox*> runPopUpRef;
 
 		void ShowPanel();
 
