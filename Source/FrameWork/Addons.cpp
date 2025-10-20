@@ -1,7 +1,7 @@
 #include "Addons.h"
 
 void MethaneVersion() {
-	std::cout << "Using Methane SDL OpenGL Framework v1.04\n";
+	std::cout << "Using Methane SDL OpenGL Framework v1.05\n";
 }
 
 MapPos::MapPos() {
@@ -335,4 +335,14 @@ std::vector<std::string> SplitString(const std::string& str, const char seperato
 		outVec.emplace_back(tempStr);
 	}
 	return outVec;
+}
+
+int RandInt(int min, int max) {
+	return min + rand() % (max - min + 1);
+}
+
+Point GetMousePos() {
+	int x, y;
+	SDL_GetMouseState(&x, &y);
+	return { x,y };
 }

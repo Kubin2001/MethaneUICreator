@@ -8,63 +8,65 @@
 #include "Font.h"
 #include "GlobalVariables.h"
 
-//BUTTON
+#include <chrono>
 
-std::string& Button::GetName() {
+//UIElemBase
+
+std::string& UIElemBase::GetName() {
 	return name;
 }
 
-void Button::SetName(const std::string value) {
+void UIElemBase::SetName(const std::string value) {
 	name = value;
 }
 
-void Button::SetText(std::string temptext) {
+void UIElemBase::SetText(std::string temptext) {
 	text = temptext;
 }
 
-std::string& Button::GetText() {
+std::string& UIElemBase::GetText() {
 	return text;
 }
 
-float Button::GetTextScale() {
+float UIElemBase::GetTextScale() {
 	return textScale;
 }
-void Button::SetTextScale(float temp) {
+void UIElemBase::SetTextScale(float temp) {
 	textScale = temp;
 }
-int Button::GetInterLine() {
+int UIElemBase::GetInterLine() {
 	return interLine;
 }
-void Button::SetInterLine(int temp) {
+void UIElemBase::SetInterLine(int temp) {
 	interLine = temp;
 }
 
-bool Button::GetBorder() {
+bool UIElemBase::GetBorder() {
 	return border;
 }
 
-Font* Button::GetFont() {
+Font* UIElemBase::GetFont() {
 	return font;
 }
 
-void Button::SetFont(Font* font) {
+void UIElemBase::SetFont(Font* font) {
 	this->font = font;
 }
 
-void Button::SetBorder(bool temp) {
+void UIElemBase::SetBorder(bool temp) {
 	border = temp;
 }
 
-int Button::GetBorderThickness() {
+int UIElemBase::GetBorderThickness() {
 	return borderThickness;
 }
 
-void Button::SetBorderThickness(const int temp) {
+void UIElemBase::SetBorderThickness(const int temp) {
 	borderThickness = temp;
 	border = true;
 }
 
-void Button::SetBorder(const int width, const unsigned char R, const unsigned char G, const unsigned char B) {
+void UIElemBase::SetBorder(const int width, const unsigned char R, const unsigned char G, const unsigned char B) {
 	border = true;
 	borderThickness = width;
 	borderRGB[0] = R;
@@ -72,20 +74,20 @@ void Button::SetBorder(const int width, const unsigned char R, const unsigned ch
 	borderRGB[2] = B;
 }
 
-int Button::GetTextStartX() {
+int UIElemBase::GetTextStartX() {
 	return textStartX;
 }
-void Button::SetTextStartX(int temp) {
+void UIElemBase::SetTextStartX(int temp) {
 	textStartX = temp;
 }
-int Button::GetTextStartY() {
+int UIElemBase::GetTextStartY() {
 	return textStartY;
 }
-void Button::SetTextStartY(int temp) {
+void UIElemBase::SetTextStartY(int temp) {
 	textStartY = temp;
 }
 
-void Button::SetColor(const unsigned char R, const unsigned char G, const unsigned char B , const unsigned char A) {
+void UIElemBase::SetColor(const unsigned char R, const unsigned char G, const unsigned char B , const unsigned char A) {
 	buttonColor[0] = R;
 	buttonColor[1] = G;
 	buttonColor[2] = B;
@@ -93,13 +95,13 @@ void Button::SetColor(const unsigned char R, const unsigned char G, const unsign
 }
 
 
-void Button::SetBorderRGB(const unsigned char R, const unsigned char G, const unsigned char B) {
+void UIElemBase::SetBorderRGB(const unsigned char R, const unsigned char G, const unsigned char B) {
 	borderRGB[0] = R;
 	borderRGB[1] = G;
 	borderRGB[2] = B;
 }
 
-void Button::SetFontColor(const unsigned char R, const unsigned char G, const unsigned char B) {
+void UIElemBase::SetFontColor(const unsigned char R, const unsigned char G, const unsigned char B) {
 	if (font != nullptr) {
 		if (font->GetTexture() != nullptr) {
 			fontRGB[0] = R;
@@ -109,7 +111,7 @@ void Button::SetFontColor(const unsigned char R, const unsigned char G, const un
 	}
 }
 
-void Button::Render(MT::Renderer* renderer) {
+void UIElemBase::Render(MT::Renderer* renderer) {
 	if (!hidden) {
 		if (GetTexture() == nullptr) {
 			RenderItslelf(renderer);
@@ -129,7 +131,7 @@ void Button::Render(MT::Renderer* renderer) {
 	}
 }
 
-void Button::RenderItslelf(MT::Renderer* renderer) {
+void UIElemBase::RenderItslelf(MT::Renderer* renderer) {
 	if (hovered && hoverable) {
 		renderer->RenderRect(rectangle, { buttonColor[0], buttonColor[1], buttonColor[2]}, buttonColor[3]);
 		renderer->RenderRect(rectangle, { hooverFilter[0], hooverFilter[1], hooverFilter[2] }, hooverFilter[3]);
@@ -139,7 +141,7 @@ void Button::RenderItslelf(MT::Renderer* renderer) {
 	}
 }
 
-void Button::RenderBorder(MT::Renderer* renderer) {
+void UIElemBase::RenderBorder(MT::Renderer* renderer) {
 	MT::Rect leftLine{ rectangle.x, rectangle.y, borderThickness, rectangle.h };
 	MT::Rect upperLine{ rectangle.x, rectangle.y, rectangle.w, borderThickness };
 	MT::Rect rightLine{ (rectangle.x + rectangle.w - borderThickness), rectangle.y, borderThickness, rectangle.h };
@@ -151,7 +153,7 @@ void Button::RenderBorder(MT::Renderer* renderer) {
 	renderer->RenderRect(downLine, { borderRGB[0], borderRGB[1], borderRGB[2] });
 }
 
-void Button::RenderText(MT::Renderer* renderer) {
+void UIElemBase::RenderText(MT::Renderer* renderer) {
 	if (font != nullptr) {
 		if (text.empty()) { return; }
 		font->SetFilter(fontRGB[0], fontRGB[1], fontRGB[2]);
@@ -178,32 +180,32 @@ void Button::RenderText(MT::Renderer* renderer) {
 	}
 }
 
-void Button::SetRenderTextType(const unsigned short textRenderType) {
+void UIElemBase::SetRenderTextType(const unsigned short textRenderType) {
 	this->textRenderType = textRenderType;
 }
 
 
-bool Button::IsHidden() {
+bool UIElemBase::IsHidden() {
 	return hidden;
 }
 
-void Button::Hide() {
+void UIElemBase::Hide() {
 	hidden = true;
 }
 
-void Button::Show() {
+void UIElemBase::Show() {
 	hidden = false;
 }
 
-bool Button::IsHovered() {
+bool UIElemBase::IsHovered() {
 	return hovered;
 }
 
-void Button::SetHover(bool temp) {
+void UIElemBase::SetHover(bool temp) {
 	hovered = temp;
 }
 
-void Button::SetHoverFilter(const bool filter, const unsigned char R, const unsigned char G, const unsigned char B, const unsigned char A, const std::string& sound) {
+void UIElemBase::SetHoverFilter(const bool filter, const unsigned char R, const unsigned char G, const unsigned char B, const unsigned char A, const std::string& sound) {
 	this->hoverable = filter;
 	hooverFilter[0] = R;
 	hooverFilter[1] = G;
@@ -212,8 +214,16 @@ void Button::SetHoverFilter(const bool filter, const unsigned char R, const unsi
 	hooverSound = sound;
 }
 
-std::string& Button::GetHooverSound() {
+std::string& UIElemBase::GetHooverSound() {
 	return hooverSound;
+}
+
+int UIElemBase::GetZLayer() {
+	return this->zLayer;
+}
+
+void UIElemBase::SetZLayer(const int temp) {
+	zLayer = temp;
 }
 
 //BUTTON
@@ -376,18 +386,56 @@ UI::UI(MT::Renderer* renderer) {
 
 
 void UI::Render() {
-	for (const auto &it: Buttons){
-		it->Render(renderer);
+	if (!useLayersInRendering) {
+		for (const auto& it : Buttons) {
+			it->Render(renderer);
+		}
+		for (const auto& it : TextBoxes) {
+			it->Render(renderer);
+		}
+		for (const auto& it : ClickBoxes) {
+			it->Render(renderer);
+		}
+		for (const auto& it : PopUpBoxes) {
+			it->Render(renderer);
+		}
 	}
-	for (const auto& it : TextBoxes){
-		it->Render(renderer);
+	else {
+		for (const auto& it : Buttons) {
+			Zlayers[it->zLayer].Buttons.emplace_back(it);
+		}
+		for (const auto& it : TextBoxes) {
+			Zlayers[it->zLayer].TextBoxes.emplace_back(it);
+		}
+		for (const auto& it : ClickBoxes) {
+			Zlayers[it->zLayer].ClickBoxes.emplace_back(it);
+		}
+		for (const auto& it : PopUpBoxes) {
+			Zlayers[it->zLayer].PopUpBoxes.emplace_back(it);
+		}
+		for (auto& it : Zlayers) {
+			auto& layer = it.second;
+			for (auto& btn : layer.Buttons) {
+				btn->Render(renderer);
+			}
+			for (auto& btn : layer.ClickBoxes) {
+				btn->Render(renderer);
+			}
+			for (auto& btn : layer.TextBoxes) {
+				btn->Render(renderer);
+			}
+			for (auto& btn : layer.PopUpBoxes) {
+				btn->Render(renderer);
+			}
+		}
+		Zlayers.clear();
 	}
-	for (const auto& it : ClickBoxes){
-		it->Render(renderer);
-	}
-	for (const auto& it : PopUpBoxes) {
-		it->Render(renderer);
-	}
+}
+
+
+void UI::RenderRawText(Font* font, const int x, const int y, const std::string& text,const int interline,
+		const unsigned char R, const unsigned char G, const unsigned char B) {
+	font->RenderRawText(renderer, x, y, text, interline, R, G, B);
 }
 
 
@@ -425,7 +473,7 @@ Button* UI::CreateButton(std::string name, int x, int y, int w, int h, MT::Textu
 		btn->SetBorder(true);
 	}
 
-	ButtonsMap.emplace(btn->GetName(), btn);
+	UIElemMap.emplace(btn->GetName(), btn);
 	return btn;
 }
 
@@ -465,7 +513,7 @@ TextBox* UI::CreateTextBox(std::string name, int x, int y, int w, int h, MT::Tex
 		tb->SetBorder(true);
 	}
 
-	TextBoxesMap.emplace(tb->GetName(), tb);
+	UIElemMap.emplace(tb->GetName(), tb);
 	return tb;
 }
 
@@ -504,7 +552,7 @@ ClickBox* UI::CreateClickBox(std::string name, int x, int y, int w, int h, MT::T
 		cb->SetBorder(true);
 	}
 
-	ClickBoxesMap.emplace(cb->GetName(), cb);
+	UIElemMap.emplace(cb->GetName(), cb);
 	return cb;
 }
 
@@ -543,7 +591,7 @@ PopUpBox* UI::CreatePopUpBox(std::string name, int lifeSpan, int x, int y, int w
 		pb->SetBorder(true);
 	}
 
-	PopUpBoxesMap.emplace(pb->GetName(), pb);
+	UIElemMap.emplace(pb->GetName(), pb);
 	return pb;
 }
 
@@ -635,34 +683,20 @@ void UI::CheckClickBoxes(SDL_Event& event) {
 	}
 }
 
+
+
 Button* UI::GetButton(const std::string& name) {
-	auto btnFind = ButtonsMap.find(name);
-	if (btnFind == ButtonsMap.end()) {
-		return nullptr;
-	}
-	return btnFind->second;
+	return UIGetElem<Button>(name);
 }
 TextBox* UI::GetTextBox(const std::string& name) {
-	auto msBoxFind = TextBoxesMap.find(name);
-	if (msBoxFind == TextBoxesMap.end()) {
-		return nullptr;
-	}
-	return msBoxFind->second;
+	return UIGetElem<TextBox>(name);
 }
 ClickBox* UI::GetClickBox(const std::string& name) {
-	auto interBoxFind = ClickBoxesMap.find(name);
-	if (interBoxFind == ClickBoxesMap.end()) {
-		return nullptr;
-	}
-	return interBoxFind->second;
+	return UIGetElem<ClickBox>(name);
 }
 
 PopUpBox* UI::GetPopUpBox(const std::string& name) {
-	auto interBoxFind = PopUpBoxesMap.find(name);
-	if (interBoxFind == PopUpBoxesMap.end()) {
-		return nullptr;
-	}
-	return interBoxFind->second;
+	return UIGetElem<PopUpBox>(name);
 }
 
 void UI::SetElementColor(const std::string& name, const unsigned char R, const unsigned char G, const unsigned char B) {
@@ -681,6 +715,11 @@ void UI::SetElementColor(const std::string& name, const unsigned char R, const u
 	ClickBox* clickBox = GetClickBox(name);
 	if (clickBox != nullptr) {
 		clickBox->SetColor(R, G, B);
+		return;
+	}
+	PopUpBox* popUpBox = GetPopUpBox(name);
+	if (popUpBox != nullptr) {
+		popUpBox->SetColor(R, G, B);
 		return;
 	}
 }
@@ -703,6 +742,11 @@ void UI::SetElementBorderColor(const std::string& name, const unsigned char R, c
 		clickBox->SetBorderRGB(R, G, B);
 		return;
 	}
+	PopUpBox* popUpBox = GetPopUpBox(name);
+	if (popUpBox != nullptr) {
+		popUpBox->SetBorderRGB(R, G, B);
+		return;
+	}
 }
 
 void UI::SetElementFontColor(const std::string& name, const unsigned char R, const unsigned char G, const unsigned char B) {
@@ -721,6 +765,11 @@ void UI::SetElementFontColor(const std::string& name, const unsigned char R, con
 	ClickBox* clickBox = GetClickBox(name);
 	if (clickBox != nullptr) {
 		clickBox->SetFontColor(R, G, B);
+		return;
+	}
+	PopUpBox* popUpBox = GetPopUpBox(name);
+	if (popUpBox != nullptr) {
+		popUpBox->SetFontColor(R, G, B);
 		return;
 	}
 }
@@ -750,8 +799,10 @@ void UI::ManageInput(SDL_Event& event) {
 	SDL_GetMouseState(&lastMousePos.x, &lastMousePos.y);
 }
 
+
 bool UI::DeleteButton(const std::string& name) {
-	ButtonsMap.erase(name);
+
+	UIElemMap.erase(name);
 	for (size_t i = 0; i < Buttons.size(); i++){
 		if (Buttons[i]->GetName() == name) {
 			delete Buttons[i];
@@ -763,7 +814,7 @@ bool UI::DeleteButton(const std::string& name) {
 }
 
 bool UI::DeleteTextBox(const std::string& name) {
-	TextBoxesMap.erase(name);
+	UIElemMap.erase(name);
 	for (size_t i = 0; i < TextBoxes.size(); i++){
 		if (TextBoxes[i]->GetName() == name) {
 			delete TextBoxes[i];
@@ -775,7 +826,7 @@ bool UI::DeleteTextBox(const std::string& name) {
 }
 
 bool UI::DeleteClickBox(const std::string& name) {
-	ClickBoxesMap.erase(name);
+	UIElemMap.erase(name);
 	for (size_t i = 0; i < ClickBoxes.size(); i++){
 		if (ClickBoxes[i]->GetName() == name) {
 			delete ClickBoxes[i];
@@ -787,7 +838,7 @@ bool UI::DeleteClickBox(const std::string& name) {
 }
 
 bool UI::DeletePopUpBox(const std::string& name) {
-	PopUpBoxesMap.erase(name);
+	UIElemMap.erase(name);
 	for (size_t i = 0; i < PopUpBoxes.size(); i++) {
 		if (PopUpBoxes[i]->GetName() == name) {
 			delete PopUpBoxes[i];
@@ -799,10 +850,27 @@ bool UI::DeletePopUpBox(const std::string& name) {
 }
 
 bool UI::DeleteAnyElem(const std::string& name) {
-	if (DeleteButton(name)) { return true; }
-	if (DeleteTextBox(name)) { return true; }
-	if (DeleteClickBox(name)) { return true; }
-	if (DeletePopUpBox(name)) { return true; }
+	auto elemMap = UIElemMap.find(name);
+	if (elemMap == UIElemMap.end()) {
+		return false;
+	}
+	UIElemBase* uiElemBase = elemMap->second;
+	if (dynamic_cast<Button*>(uiElemBase) != nullptr) {
+		DeleteButton(name);
+		return true;
+	}
+	if (dynamic_cast<TextBox*>(uiElemBase) != nullptr) {
+		DeleteTextBox(name);
+		return true;
+	}
+	if (dynamic_cast<ClickBox*>(uiElemBase) != nullptr) {
+		DeleteClickBox(name);
+		return true;
+	}
+	if (dynamic_cast<PopUpBox*>(uiElemBase) != nullptr) {
+		DeletePopUpBox(name);
+		return true;
+	}
 	return false;
 }
 
@@ -834,6 +902,18 @@ Font* UI::GetFont(const std::string& name) {
 	return fontManager->GetFont(name);
 }
 
+void UI::SetBaseFont(Font* font) {
+	baseFont = font;
+}
+
+Font* UI::GetBaseFont() {
+	return this->baseFont;
+}
+
+std::vector<Font*>& UI::GetAllFonts() {
+	return this->fontManager->fonts;
+}
+
 void UI::ScanFont(const std::string& texturePath, const std::string& charactersDataPath,
 	unsigned char fR, unsigned char fG, unsigned char fB, unsigned char bR, unsigned char bG, unsigned char bB, Point size,
 	const std::string& outputPath) {
@@ -858,12 +938,14 @@ void UI::ClearAll(bool clearLists) {
 	for (auto& it : ClickBoxes) {
 		delete it;
 	}
+	for (auto& it : PopUpBoxes) {
+		delete it;
+	}
 	Buttons.clear();
 	TextBoxes.clear();
 	ClickBoxes.clear();
-	ButtonsMap.clear();
-	TextBoxesMap.clear();
-	ClickBoxesMap.clear();
+
+	UIElemMap.clear();
 }
 
 

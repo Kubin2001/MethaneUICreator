@@ -3,39 +3,7 @@
 #include <print>
 
 #include "Helpers.h"
-
-bool ArgToInt(const std::string& arg, int& intArg) {
-	try {
-		intArg = std::stoi(arg);
-		return true;
-	}
-	catch (const std::exception& e) {
-		intArg = -1;
-		return false;
-	}
-}
-
-bool ArgToFloat(const std::string& arg, float& floatArg) {
-	try {
-		floatArg = std::stof(arg);
-		return true;
-	}
-	catch (const std::exception& e) {
-		floatArg = -1.0f;
-		return false;
-	}
-}
-
-bool ArgToUCHar(const std::string& arg, unsigned char& ucharArg) {
-	try {
-		ucharArg = std::stoi(arg);
-		return true;
-	}
-	catch (const std::exception& e) {
-		ucharArg = -1.0f;
-		return false;
-	}
-}
+#include "Printer.h"
 
 void ProgramScene::Init(MT::Renderer* renderer, UI* ui){
 	this->renderer = renderer;
@@ -171,6 +139,12 @@ void ProgramScene::FrameUpdate(){
 				editedButton->SetRenderTextType(val);
 			}
 		}
+		else if (ui->GetClickBox("KeyZLayer")->ConsumeStatus()) {
+			int val = 0;
+			if (ArgToInt(ui->GetTextBox("KeyZLayertb")->GetText(), val)) {
+				editedButton->SetZLayer(val);
+			}
+		}
 		else if (ui->GetClickBox("KeyColor")->ConsumeStatus()) {
 			std::string& R = ui->GetTextBox("KeyColor1")->GetText();
 			std::string& G = ui->GetTextBox("KeyColor2")->GetText();
@@ -215,12 +189,18 @@ void ProgramScene::FrameUpdate(){
 
 void ProgramScene::Input(SDL_Event& event){
 	if (event.type == SDL_KEYUP) {
-		if (event.button.button == SDL_SCANCODE_M) {
+		if (event.key.keysym.scancode == SDL_SCANCODE_M) {
 			if (panelType != 1 && panelType != 2) {
 				ShowPanel();
 			}
 			else if(panelType == 1) {
 				HidePanel();
+			}
+		}
+		else if (event.key.keysym.scancode == SDL_SCANCODE_O) {
+			if (editedButton != nullptr) {
+				OutputUILayout(editedButton);
+				std::cout << "test\n";
 			}
 		}
 	}
@@ -422,6 +402,7 @@ void ProgramScene::ShowEditPanel(Button *button) {
 	CreateEditBox("KeyEditTextX", y, "Text X: ", std::to_string(editedButton->GetTextStartX()));
 	CreateEditBox("KeyEditTextY", y, "Text Y: ", std::to_string(editedButton->GetTextStartY()));
 	CreateEditBox("KeyTextRender", y, "Text Render: ", std::to_string(editedButton->textRenderType));
+	CreateEditBox("KeyZLayer", y, "Z Layer: ", std::to_string(editedButton->zLayer));
 
 	unsigned char* color = editedButton->buttonColor;
 	CreateQuadEditBox("KeyColor", y, "Color", std::to_string(color[0]),
