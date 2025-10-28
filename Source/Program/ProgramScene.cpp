@@ -199,7 +199,7 @@ void ProgramScene::Input(SDL_Event& event){
 		}
 		else if (event.key.keysym.scancode == SDL_SCANCODE_O) {
 			if (editedButton != nullptr) {
-				OutputUILayout(editedButton);
+				OutputUILayout(editedButton,ui);
 				std::cout << "test\n";
 			}
 		}
