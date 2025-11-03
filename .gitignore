@@ -1,8 +1,8 @@
 x64/
 .vs/
 Libs/
-MethaneUICreator.vcxproj
-MethaneUICreator.vcxproj.filters
-MethaneUICreator.vcxproj.user
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
 InternalReadMe.txt
 *.dll

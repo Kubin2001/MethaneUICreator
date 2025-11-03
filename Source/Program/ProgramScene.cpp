@@ -31,7 +31,6 @@ void ProgramScene::FrameUpdate(){
 		if (btnCreateList.Main()->ConsumeStatus()) {
 			if (btnCreateList.IsExpanded()) {
 				btnCreateList.Hide();
-			
 			}	
 			else {
 				btnCreateList.Expand();
@@ -198,10 +197,7 @@ void ProgramScene::Input(SDL_Event& event){
 			}
 		}
 		else if (event.key.keysym.scancode == SDL_SCANCODE_O) {
-			if (editedButton != nullptr) {
-				OutputUILayout(editedButton,ui);
-				std::cout << "test\n";
-			}
+			OutputUILayout(elements,ui);
 		}
 	}
 
@@ -438,6 +434,23 @@ void ProgramScene::HideEditPanel(Button* button) {
 	panelType = 0;
 }
 
+template <typename T>
+void ConvertElement(T* cBtn, Button *btn, UI *Ui) {
+	static_assert(std::is_same_v<T, Button> || std::is_same_v<T, TextBox> 
+		|| std::is_same_v<T, ClickBox> || std::is_same_v<T, PopUpBox>, "Wrong type");
+
+	cBtn->SetTexture(btn->GetTexture());
+	cBtn->SetFont(btn->GetFont());
+	cBtn->SetText(btn->GetText());
+	cBtn->SetTextScale(btn->GetTextScale());
+	cBtn->SetTextStartX(btn->GetTextStartX());
+	cBtn->SetTextStartY(btn->GetTextStartY());
+	cBtn->SetRenderTextType(btn->textRenderType);
+	cBtn->SetColor(btn->buttonColor[0], btn->buttonColor[1], btn->buttonColor[2], btn->buttonColor[3]);
+	cBtn->SetBorder(btn->borderThickness, btn->borderRGB[0], btn->borderRGB[1], btn->borderRGB[2]);
+	cBtn->SetFontColor(btn->fontRGB[0], btn->fontRGB[1], btn->fontRGB[2]);
+}
+
 void ProgramScene::ShowRunPanel() {
 	if (panelType == 3) {
 		HideRunPanel();
@@ -454,62 +467,26 @@ void ProgramScene::ShowRunPanel() {
 		switch(it.type){
 			case 1: {
 				Button* cBtn = ui->CreateButton(btn->name + "R", rect.x, rect.y, rect.w, rect.h);
-				cBtn->SetTexture(btn->GetTexture());
-				cBtn->SetFont(btn->GetFont());
-				cBtn->SetText(btn->GetText());
-				cBtn->SetTextScale(btn->GetTextScale());
-				cBtn->SetTextStartX(btn->GetTextStartX());
-				cBtn->SetTextStartY(btn->GetTextStartY());
-				cBtn->SetRenderTextType(btn->textRenderType);
-				cBtn->SetColor(btn->buttonColor[0], btn->buttonColor[1], btn->buttonColor[2], btn->buttonColor[3]);
-				cBtn->SetBorder(btn->borderThickness, btn->borderRGB[0], btn->borderRGB[1], btn->borderRGB[2]);
-				cBtn->SetFontColor(btn->fontRGB[0], btn->fontRGB[1], btn->fontRGB[2]);
+				ConvertElement(cBtn,btn,ui);
 				runBtnRef.emplace_back(cBtn);
 				break;
 			}
 
 			case 2: {
 				ClickBox* cBtn = ui->CreateClickBox(btn->name + "R", rect.x, rect.y, rect.w, rect.h);
-				cBtn->SetTexture(btn->GetTexture());
-				cBtn->SetFont(btn->GetFont());
-				cBtn->SetText(btn->GetText());
-				cBtn->SetTextScale(btn->GetTextScale());
-				cBtn->SetTextStartX(btn->GetTextStartX());
-				cBtn->SetTextStartY(btn->GetTextStartY());
-				cBtn->SetRenderTextType(btn->textRenderType);
-				cBtn->SetColor(btn->buttonColor[0], btn->buttonColor[1], btn->buttonColor[2], btn->buttonColor[3]);
-				cBtn->SetBorder(btn->borderThickness, btn->borderRGB[0], btn->borderRGB[1], btn->borderRGB[2]);
-				cBtn->SetFontColor(btn->fontRGB[0], btn->fontRGB[1], btn->fontRGB[2]);
+				ConvertElement(cBtn, btn, ui);
 				runClickRef.emplace_back(cBtn);
 				break;
 			}
 			case 3: {
 				TextBox* cBtn = ui->CreateTextBox(btn->name + "R", rect.x, rect.y, rect.w, rect.h);
-				cBtn->SetTexture(btn->GetTexture());
-				cBtn->SetFont(btn->GetFont());
-				cBtn->SetText(btn->GetText());
-				cBtn->SetTextScale(btn->GetTextScale());
-				cBtn->SetTextStartX(btn->GetTextStartX());
-				cBtn->SetTextStartY(btn->GetTextStartY());
-				cBtn->SetRenderTextType(btn->textRenderType);
-				cBtn->SetColor(btn->buttonColor[0], btn->buttonColor[1], btn->buttonColor[2], btn->buttonColor[3]);
-				cBtn->SetBorder(btn->borderThickness, btn->borderRGB[0], btn->borderRGB[1], btn->borderRGB[2]);
-				cBtn->SetFontColor(btn->fontRGB[0], btn->fontRGB[1], btn->fontRGB[2]);
+				ConvertElement(cBtn, btn, ui);
 				runTextRef.emplace_back(cBtn);
 				break;
 			}
 			case 4: {
 				PopUpBox* cBtn = ui->CreatePopUpBox(btn->name + "R", 120, rect.x, rect.y, rect.w, rect.h);
-				cBtn->SetTexture(btn->GetTexture());
-				cBtn->SetFont(btn->GetFont());
-				cBtn->SetText(btn->GetText());
-				cBtn->SetTextScale(btn->GetTextScale());
-				cBtn->SetTextStartX(btn->GetTextStartX());
-				cBtn->SetTextStartY(btn->GetTextStartY());
-				cBtn->SetRenderTextType(btn->textRenderType);
-				cBtn->SetColor(btn->buttonColor[0], btn->buttonColor[1], btn->buttonColor[2], btn->buttonColor[3]);
-				cBtn->SetBorder(btn->borderThickness, btn->borderRGB[0], btn->borderRGB[1], btn->borderRGB[2]);
-				cBtn->SetFontColor(btn->fontRGB[0], btn->fontRGB[1], btn->fontRGB[2]);
+				ConvertElement(cBtn, btn, ui);
 				runPopUpRef.emplace_back(cBtn);
 				break;
 			}

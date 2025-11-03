@@ -3,7 +3,7 @@
 #include <string>
 #include <fstream>
 
-#include "UI.h"
+#include "CreatedElement.h"
 
 std::string AditionalToString(Button* button, UI* ui) {
 	std::string addString;
@@ -69,10 +69,35 @@ std::string AditionalToString(Button* button, UI* ui) {
 	return addString;
 }
 
-std::string ButtonToString(Button* button, UI *ui) {
-	std::string btnOutput = "ui->CreateButton(";
+std::string ButtonToString(Button* button, int type, UI *ui) {
+	std::string btnOutput = "";
+	std::string getBtnStr = "";
+
+	if (type == 0) {
+		return (std::string)"Wrong type";
+	}
+	if (type == 1) {
+		btnOutput = "ui->CreateButton(";
+		getBtnStr = "\nui->GetButton(\"" + button->GetName() + "\")->";
+	}
+	else if (type == 2) {
+		btnOutput = "ui->CreateTextBox(";
+		getBtnStr = "\nui->GetTextBox(\"" + button->GetName() + "\")->";
+	}
+	else if (type == 3) {
+		btnOutput = "ui->CreateClickBox(";
+		getBtnStr = "\nui->GetClickBox(\"" + button->GetName() + "\")->";
+	}
+	else if (type == 4) {
+		btnOutput = "ui->CreatePopUpBox(";
+		getBtnStr = "\nui->GetPopUpBox(\"" + button->GetName() + "\")->";
+	}
+
 	btnOutput += "\"" + button->GetName() + "\"";
 	btnOutput += ',';
+	if (type == 4) {
+		btnOutput += "120,"; // Czas pop up boxa na ile wyskakuje
+	}
 	btnOutput += std::to_string(button->GetRectangle().x);
 	btnOutput += ',';
 	btnOutput += std::to_string(button->GetRectangle().y);
@@ -83,7 +108,6 @@ std::string ButtonToString(Button* button, UI *ui) {
 	btnOutput += AditionalToString(button, ui);
 	btnOutput += ");";
 
-	std::string getBtnStr = "\nui->GetButton(\"" + button->GetName() + "\")->";
 	if (button->textRenderType != 1) {
 		btnOutput += getBtnStr + "SetRenderTextType(" + std::to_string(button->textRenderType) + ");";
 	}
@@ -118,10 +142,13 @@ std::string ButtonToString(Button* button, UI *ui) {
 	return btnOutput;
 }
 
-void OutputUILayout(Button* button, UI *ui) {
+void OutputUILayout(const std::vector<CreatedElement> &elements, UI *ui) {
 	std::ofstream file("test.txt");
 
-	file << ButtonToString(button, ui) + "\n";
+	for (auto& cElem : elements) {
+		file << ButtonToString(cElem.btn,cElem.type, ui) + "\n";
+	}
+
 	std::println("Test");
 }
 

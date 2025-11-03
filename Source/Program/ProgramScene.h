@@ -1,19 +1,7 @@
 #pragma once
 
 #include "SceneManager.h"
-
-struct CreatedElement {
-	Button* btn = nullptr;
-	int type = 0; // 0 empty /1 btn /2 tb /3 cb/ 4 popupBox
-
-	CreatedElement() = default;
-
-	CreatedElement(Button* button, const int type) {
-		this->btn = button;
-		this->type = type;
-	}
-};
-
+#include "CreatedElement.h"
 
 class ProgramScene :public Scene{
 	private:
