@@ -183,6 +183,24 @@ void ProgramScene::FrameUpdate(){
 		}
 	}
 
+	if (outOptions) {
+		if (ui->GetClickBox("btnRefOpt")->ConsumeStatus()) {
+			outputType = 1;
+			ui->GetClickBox("brnDirOut")->SetColor(255, 0, 0);
+			ui->GetClickBox("btnRefOpt")->SetColor(0, 255, 0);
+		}
+		if (ui->GetClickBox("brnDirOut")->ConsumeStatus()) {
+			outputType = 2;
+			ui->GetClickBox("brnDirOut")->SetColor(0,255,0);
+			ui->GetClickBox("btnRefOpt")->SetColor(255, 0, 0);
+		}
+		if(ui->GetClickBox("outConfBtn")->ConsumeStatus()){
+			OutputUILayout(elements, ui, outputType);
+			HideOutputSubPanel();
+			outOptions = false;
+		}
+	}
+
 	MoveSelected();
 }
 
@@ -197,24 +215,29 @@ void ProgramScene::Input(SDL_Event& event){
 			}
 		}
 		else if (event.key.keysym.scancode == SDL_SCANCODE_O) {
-			OutputUILayout(elements,ui);
+			if (!outOptions) {
+				CreateOutputSubPanel();
+				outOptions = true;
+			}
+			else {
+				HideOutputSubPanel();
+				outOptions = false;
+			}
 		}
 	}
 
 	if (event.type == SDL_MOUSEBUTTONUP) {
-		int x, y;
-		SDL_GetMouseState(&x, &y);
-		MT::Rect mouseRect{ x,y,1,1 };
+		Point p = GetMousePos();
+		MT::Rect mouseRect{ p.x,p.y,1,1 };
 		if (event.button.button == SDL_BUTTON_LEFT) {;
 			if (selectedButton.btn != nullptr) {
 				elements.emplace_back(selectedButton);
 				selectedButton.btn = nullptr;
 			}
 			else {
-				for (auto& it : elements) {
+				for (auto& it : elements) { // bez break aby by³ wybierany najnowszy zawsze
 					if (it.btn->GetRectangle().IsColliding(mouseRect)) {
 						selectedButton.btn = it.btn;
-						break;
 					}
 				}
 			}
@@ -222,10 +245,18 @@ void ProgramScene::Input(SDL_Event& event){
 		else if (event.button.button == SDL_BUTTON_RIGHT) {
 			if (panelType == 1) {return;}
 
+			bool found = false;
 			for (auto& it : elements) {
 				if (it.btn->GetRectangle().IsColliding(mouseRect)) {
 					ShowEditPanel(it.btn);
+					found = true;
 				}
+			}
+			if (!found) {
+				if (panelType == 2) {
+					HideEditPanel(editedButton);
+				}
+				
 			}
 		}
 	}
@@ -362,7 +393,6 @@ void ProgramScene::CreateQuadEditBox(const std::string& name, int& y, const std:
 void ProgramScene::ShowEditPanel(Button *button) {
 	if (panelType == 2) {
 		HideEditPanel(button);
-		return;
 	}
 	editedButton = button;
 	rightPanel->Show();
@@ -533,4 +563,37 @@ void ProgramScene::MoveSelected() {
 	SDL_GetMouseState(&x, &y);
 	selectedButton.btn->GetRectangle().x = x - (selectedButton.btn->GetRectangle().w / 2);
 	selectedButton.btn->GetRectangle().y = y - (selectedButton.btn->GetRectangle().h / 2);
+}
+
+void ProgramScene::CreateOutputSubPanel() {
+	Button *btn = ui->CreateButton("outBtnBack", 100, 100, 200, 250,nullptr,ui->GetFont("arial20px"),"OutputOptions",1.0f,0,10);
+	btn->SetRenderTextType(4);
+	btn->SetColor(50, 30, 50, 255);
+	btn->SetBorder(2, 100, 100, 255);
+
+	ClickBox *cb = ui->CreateClickBox("btnRefOpt", 120, 160, 60, 60, nullptr, ui->GetFont("arial12px"), "Reference", 1.0f, 0, -15);
+	cb->SetRenderTextType(4);
+	cb->SetColor(255, 0, 0, 255);
+	cb->SetBorder(1, 100, 100, 255);
+	cb->SetHoverFilter(true, 255, 255, 255, 120,"hoverSound");
+
+	cb = ui->CreateClickBox("brnDirOut", 220, 160, 60, 60, nullptr, ui->GetFont("arial12px"), "Direct", 1.0f, 0, -15);
+	cb->SetRenderTextType(4);
+	cb->SetColor(0, 255, 0, 255);
+	cb->SetBorder(1, 100, 100, 255);
+	cb->SetHoverFilter(true, 255, 255, 255, 120,"hoverSound");
+
+	cb = ui->CreateClickBox("outConfBtn", 150, 240, 100, 50, nullptr, ui->GetFont("arial20px"), "Confirm");
+	cb->SetRenderTextType(2);
+	cb->SetColor(70, 30, 70, 255);
+	cb->SetBorder(2, 50, 50, 255);
+	cb->SetHoverFilter(true, 255, 255, 255, 120,"hoverSound");
+
+}
+
+void ProgramScene::HideOutputSubPanel() {
+	ui->DeleteAnyElem("outBtnBack");
+	ui->DeleteAnyElem("btnRefOpt");
+	ui->DeleteAnyElem("brnDirOut");
+	ui->DeleteAnyElem("outConfBtn");
 }

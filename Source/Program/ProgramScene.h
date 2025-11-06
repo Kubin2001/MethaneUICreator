@@ -23,6 +23,9 @@ class ProgramScene :public Scene{
 		std::vector<ClickBox*> runClickRef;
 		std::vector<PopUpBox*> runPopUpRef;
 
+		bool outOptions = false;
+		int outputType = 1; // 1 Przez referencje 2 Przez UI getbutton("name) 
+
 		void ShowPanel();
 
 		void HidePanel();
@@ -46,6 +49,10 @@ class ProgramScene :public Scene{
 		void CreateNewElem(const int type);
 
 		void MoveSelected();
+
+		void CreateOutputSubPanel();
+
+		void HideOutputSubPanel();
 
 	public:
 		void Init(MT::Renderer* renderer = nullptr, UI* ui = nullptr);

@@ -1,0 +1,4 @@
+ui->CreateButton("btn1",384,204,100,100);
+ui->GetButton("btn1")->SetBorder(6,6,255,255);
+ui->CreateTextBox("btn2",503,403,100,100);
+ui->GetTextBox("btn2")->SetColor(255,90,255,255);
