@@ -5,6 +5,7 @@
 struct CreatedElement {
 	Button* btn = nullptr;
 	int type = 0; // 0 empty /1 btn /2 tb /3 cb/ 4 popupBox
+	int renderType = 1; // 1 bazowy 2 okr¹g³y
 
 	CreatedElement() = default;
 

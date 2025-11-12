@@ -13,6 +13,9 @@ int printerOutType = 1;
 
 std::string AditionalToString(Button* button, UI* ui) {
 	std::string addString;
+	int level = 0;
+	std::array<bool, 6> arr = { 0,0,0,0,0,0 }; // Shows how many are used
+
 	//Texture
 	std::string textureName = "";
 	if (button->GetTexture() != nullptr) {
@@ -22,10 +25,10 @@ std::string AditionalToString(Button* button, UI* ui) {
 			}
 		}
 	}
-	if (textureName == "") {
-		return addString;
+	if (textureName != "") {
+		level = 1;
+		arr[0] = 1;
 	}
-	addString += ",TexMan::GetTex(\"" + textureName + "\")";
 	//Texture
 	//FONT
 	std::string fontStr = "";
@@ -36,36 +39,89 @@ std::string AditionalToString(Button* button, UI* ui) {
 			}
 		}
 	}
-	if (textureName == "") {
-		return addString;
-	}
-	addString += ",ui->GetFont(\"" + fontStr + "\")";
 	//FONT
-	//Text
-	if (button->GetText() == "") {
-		return addString;
+	if (fontStr != "") {
+		level = 2;
+		arr[1] = 1;
 	}
-	addString += ",\"" + button->GetText() + "\"";
 	//Text
-
-	//Text
-	if (button->GetTextScale() == 1.0f) {
-		return addString;
+	if (button->GetText() != "") {
+		level = 3;
+		arr[2] = 1;
 	}
-	addString += "," + std::to_string(button->GetTextScale());
 	//Text
+	//Text Scale
+	if (button->GetTextScale() != 1.0f) {
+		level = 4;
+		arr[3] = 1;
+	}
+	//Text Scale
 	//textStartX
-	if (button->GetTextStartX() == 0) {
-		return addString;
+	if (button->GetTextStartX() != 0) {
+		level = 5;
+		arr[4] = 1;
 	}
-	addString += "," + std::to_string(button->GetTextStartX());
 	//textStartX
 	//textStartY
-	if (button->GetTextStartY() == 0) {
+	if (button->GetTextStartY() != 0) {
+		level = 6;
+		arr[5] = 1;
+	}
+	//no sense to use border here 
+
+	if (level == 0) {
 		return addString;
 	}
-	addString += "," + std::to_string(button->GetTextStartY());
-	//no sense to use border here 
+	if (level >= 1) {
+		if (arr[0]) {
+			addString += ",TexMan::GetTex(\"" + textureName + "\")";
+		}
+		else {
+			addString += ",nullptr";
+		}
+	}
+	if (level >= 2) {
+		if (arr[1]) {
+			addString += ",ui->GetFont(\"" + fontStr + "\")";
+		}
+		else {
+			addString += ",nullptr";
+		}
+	}
+	if (level >= 3) {
+		if (arr[2]) {
+			addString += ",\"" + button->GetText() + "\"";
+		}
+		else {
+			addString += ",\"\"";
+		}
+	}
+	if (level >= 4) {
+		if (arr[3]) {
+			addString += "," + std::to_string(button->GetTextScale());
+		}
+		else {
+			addString += ",1.0f";
+		}
+
+	}
+	if (level >= 5) {
+		if (arr[4]) {
+			addString += "," + std::to_string(button->GetTextStartX());
+		}
+		else {
+			addString += ",0";
+		}
+		
+	}
+	if (level >= 6) {
+		if (arr[5]) {
+			addString += "," + std::to_string(button->GetTextStartY());
+		}
+		else {
+			addString += ",0";
+		}
+	}
 	return addString;
 }
 
@@ -79,7 +135,7 @@ void SelectStrings(std::string &btnOutStr, std::string& getBtnStr, Button* butto
 			else {
 				btnOutStr = "btn = ui->CreateButton(";
 			}
-			getBtnStr = "btn = ";
+			getBtnStr = "btn->";
 		}
 		else {
 			btnOutStr = "ui->CreateButton(";
@@ -95,7 +151,7 @@ void SelectStrings(std::string &btnOutStr, std::string& getBtnStr, Button* butto
 			else {
 				btnOutStr = "tb = ui->CreateTextBox(";
 			}
-			getBtnStr = "tb = ";
+			getBtnStr = "tb->";
 		}
 		else {
 			btnOutStr = "ui->CreateTextBox(";
@@ -111,7 +167,7 @@ void SelectStrings(std::string &btnOutStr, std::string& getBtnStr, Button* butto
 			else {
 				btnOutStr = "cb = ui->CreateClickBox(";
 			}
-			getBtnStr = "cb = ";
+			getBtnStr = "cb->";
 		}
 		else {
 			getBtnStr = "\nui->GetClickBox(\"" + button->GetName() + "\")->";
@@ -127,7 +183,7 @@ void SelectStrings(std::string &btnOutStr, std::string& getBtnStr, Button* butto
 			else {
 				btnOutStr = "pub = ui->CreatePopUpBox(";
 			}
-			getBtnStr = "pub = ";
+			getBtnStr = "pub->";
 		}
 		else {
 			btnOutStr = "ui->CreatePopUpBox(";
@@ -136,7 +192,7 @@ void SelectStrings(std::string &btnOutStr, std::string& getBtnStr, Button* butto
 	}
 }
 
-std::string ButtonToString(Button* button, int type, UI *ui) {
+std::string ButtonToString(Button* button, int type, UI *ui, int renderType) {
 	std::string btnOutput = "";
 	std::string getBtnStr = "";
 
@@ -166,6 +222,9 @@ std::string ButtonToString(Button* button, int type, UI *ui) {
 
 	if (button->zLayer != 0) {
 		btnOutput += getBtnStr + "SetZLayer(" + std::to_string(button->zLayer) + ");";
+	}
+	if (renderType == 2) {
+		btnOutput += getBtnStr + "SetRenderType(" + std::to_string(renderType) + ");";
 	}
 	if (button->buttonColor[0] != 255 || button->buttonColor[1] != 255 || button->buttonColor[2] != 255 || button->buttonColor[3] != 255) {
 		btnOutput += getBtnStr + "SetColor(" + 
@@ -202,7 +261,7 @@ void OutputUILayout(const std::vector<CreatedElement> &elements, UI *ui, int out
 	std::ofstream file("test.txt");
 	printerOutType = outputType;
 	for (auto& cElem : elements) {
-		file << ButtonToString(cElem.btn,cElem.type, ui) + "\n";
+		file << ButtonToString(cElem.btn,cElem.type, ui,cElem.renderType) + "\n";
 	}
 	firstBtn = false;
 	firsttextBox = false;

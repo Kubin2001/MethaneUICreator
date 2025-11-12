@@ -1,7 +1,6 @@
 #pragma once
-#include <iostream>
-#include <SDL.h>
 #include "SDL_mixer.h"
+
 #include <unordered_map>
 
 
@@ -19,7 +18,15 @@ class SoundMan
 
 		static void LoadSounds(const std::string& directory);
 
+		static void DeppLoad(const std::string& directory);
+
 		static void PlaySound(const std::string& name);
+
+		static void PlayRawSound(Mix_Chunk* sound);
+
+		static void PlaySoundStereo(const std::string& name, uint8_t left, uint8_t right);
+
+		static void PlayRawSoundStereo(Mix_Chunk* sound, uint8_t left, uint8_t right);
 
 		static Mix_Chunk* GetSound(const std::string& name);
 

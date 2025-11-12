@@ -7,7 +7,7 @@ class ProgramScene :public Scene{
 	private:
 		ClickBox* runButton = nullptr;
 		Button* rightPanel = nullptr;
-		ClickBoxList btnCreateList;
+		UIList<ClickBox> btnCreateList;
 		std::vector<CreatedElement> elements;
 		CreatedElement selectedButton;
 		Button* editedButton = nullptr;

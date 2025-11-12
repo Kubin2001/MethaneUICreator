@@ -1,11 +1,6 @@
-#include <iostream>
-#include <string>
-#include <fstream>
-#include <SDL.h>
-#include <optional>
 #include "UI.h"
+
 #include "Colision.h"
-#include "Font.h"
 #include "GlobalVariables.h"
 
 #include <chrono>
@@ -111,23 +106,39 @@ void UIElemBase::SetFontColor(const unsigned char R, const unsigned char G, cons
 	}
 }
 
-void UIElemBase::Render(MT::Renderer* renderer) {
-	if (!hidden) {
-		if (GetTexture() == nullptr) {
-			RenderItslelf(renderer);
+void UIElemBase::Render(UIElemBase* elem, MT::Renderer* renderer) {
+	if (!elem->hidden) {
+		if (elem->GetTexture() == nullptr) {
+			elem->RenderItslelf(renderer);
 		}
 		else {
-			renderer->RenderCopy(GetRectangle(), texture);
-			if (hovered && hoverable) {
-				renderer->RenderRect(rectangle, 
-					{ hooverFilter[0], hooverFilter[1], hooverFilter[2] }, hooverFilter[3]);
+			renderer->RenderCopy(elem->rectangle, elem->texture);
+			if (elem->hovered && elem->hoverable) {
+				renderer->RenderRect(elem->rectangle,
+					{ elem->hooverFilter[0], elem->hooverFilter[1], elem->hooverFilter[2] }, elem->hooverFilter[3]);
 			}
 		}
 
-		if (GetBorder()) {
-			RenderBorder(renderer);
+		if (elem->GetBorder()) {
+			elem->RenderBorder(renderer);
 		}
-		RenderText(renderer);
+		elem->RenderText(renderer);
+	}
+}
+
+void UIElemBase::RenderRounded(UIElemBase* elem, MT::Renderer* renderer) {
+	if (!elem->hidden) {
+		if (elem->GetTexture() == nullptr) {
+			elem->RenderItslelfRounded(renderer);
+		}
+		else {
+			renderer->RenderCopyRoundedRect(elem->rectangle, elem->texture);
+			if (elem->hovered && elem->hoverable) {
+				renderer->RenderRoundedRect(elem->rectangle,
+					{ elem->hooverFilter[0], elem->hooverFilter[1], elem->hooverFilter[2] }, elem->hooverFilter[3]);
+			}
+		}
+		elem->RenderText(renderer);
 	}
 }
 
@@ -138,6 +149,16 @@ void UIElemBase::RenderItslelf(MT::Renderer* renderer) {
 	}
 	else{
 		renderer->RenderRect(rectangle, { buttonColor[0], buttonColor[1], buttonColor[2]},buttonColor[3]);
+	}
+}
+
+void UIElemBase::RenderItslelfRounded(MT::Renderer* renderer) {
+	if (hovered && hoverable) {
+		renderer->RenderRoundedRect(rectangle, { buttonColor[0], buttonColor[1], buttonColor[2] }, buttonColor[3]);
+		renderer->RenderRoundedRect(rectangle, { hooverFilter[0], hooverFilter[1], hooverFilter[2] }, hooverFilter[3]);
+	}
+	else {
+		renderer->RenderRoundedRect(rectangle, { buttonColor[0], buttonColor[1], buttonColor[2] }, buttonColor[3]);
 	}
 }
 
@@ -177,6 +198,18 @@ void UIElemBase::RenderText(MT::Renderer* renderer) {
 				font->RenderText(renderer, text, rectangle, textScale, interLine, textStartX, textStartY);
 				break;
 		}
+	}
+}
+
+void UIElemBase::SetRenderType(const unsigned int renderType) {
+	if (renderType == 1) {
+		renderFunction = &UIElemBase::Render;
+	}
+	else  if (renderType == 2) {
+		renderFunction = &UIElemBase::RenderRounded;
+	}
+	else {
+		renderFunction = &UIElemBase::Render;
 	}
 }
 
@@ -248,14 +281,14 @@ void TextBox::ManageTextInput(SDL_Event& event) {
 			GetText() += event.text.text;
 		}
 		if (event.type == SDL_KEYDOWN) {
-			if (event.key.keysym.sym == SDLK_RETURN) {
+			if (event.key.keysym.scancode == SDL_SCANCODE_RETURN) {
 				GetText() += '\n';
+			}
+			if (event.key.keysym.scancode == SDL_SCANCODE_BACKSPACE && !text.empty()) {
+				GetText().pop_back();
 			}
 		}
 
-		if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_BACKSPACE && GetText().length() > 0) {
-			GetText().pop_back();
-		}
 	}
 
 }
@@ -309,73 +342,6 @@ void PopUpBox::SetLifeTime(const int lifeTime) {
 }
 
 //Pop Up Box
-//ClickBox List
-void ClickBoxList::Innit(UI* ui, ClickBox* main, int w, int h, int R, int G, int B, const std::vector<std::string> &texts, short space) {
-	this->ui = ui;
-	mainElement = main;
-	Elements.reserve(texts.size());
-	int y = mainElement->GetRectangle().y + (mainElement->GetRectangle().h + space);
-	int counter = 0;
-	for (size_t i = 0; i < texts.size(); i++){
-		Elements.emplace_back(
-			ui->CreateClickBox(main->GetName() + std::to_string(counter), mainElement->GetRectangle().x, y,
-				w, h, nullptr, ui->GetFont("arial12px"), texts[i]));
-
-		Elements[i]->SetColor(R,G,B);
-		Elements.back()->Hide();
-		y += (h + space);
-		counter++;
-	}
-	ui->AddListRef(this);
-	initalized = true;
-}
-
-bool ClickBoxList::IsInitialized() {
-	return initalized;
-}
-
-bool ClickBoxList::IsExpanded() {
-	return expanded;
-}
-
-ClickBox* ClickBoxList::Main() {
-	return mainElement;
-}
-
-std::vector<ClickBox*>& ClickBoxList::GetAll() {
-	return Elements;
-}
-
-void ClickBoxList::Expand() {
-	for (const auto& it : Elements) {
-		it->Show();
-	}
-	expanded = true;
-}
-
-void ClickBoxList::Hide() {
-	for (const auto& it : Elements) {
-		it->Hide();
-	}
-	expanded = false;
-}
-
-void ClickBoxList::Clear() {
-	if (!initalized) { return; }
-	for (const auto& it : Elements) {
-		ui->DeleteClickBox(it->GetName());
-	}
-	Elements.clear();
-	if (mainElement != nullptr) {
-		ui->DeleteClickBox(mainElement->GetName());
-	}
-	mainElement = nullptr;
-	ui->RemoveListRef(this);
-	initalized = false;
-	expanded = false;
-}
-
-//ClickBox List
 UI::UI(MT::Renderer* renderer) {
 	fontManager = new FontManager();
 	this->renderer = renderer;
@@ -388,16 +354,16 @@ UI::UI(MT::Renderer* renderer) {
 void UI::Render() {
 	if (!useLayersInRendering) {
 		for (const auto& it : Buttons) {
-			it->Render(renderer);
+			it->renderFunction(it,renderer);
 		}
 		for (const auto& it : TextBoxes) {
-			it->Render(renderer);
+			it->renderFunction(it, renderer);
 		}
 		for (const auto& it : ClickBoxes) {
-			it->Render(renderer);
+			it->renderFunction(it, renderer);
 		}
 		for (const auto& it : PopUpBoxes) {
-			it->Render(renderer);
+			it->renderFunction(it, renderer);
 		}
 	}
 	else {
@@ -416,16 +382,16 @@ void UI::Render() {
 		for (auto& it : Zlayers) {
 			auto& layer = it.second;
 			for (auto& btn : layer.Buttons) {
-				btn->Render(renderer);
+				btn->renderFunction(btn, renderer);
 			}
 			for (auto& btn : layer.ClickBoxes) {
-				btn->Render(renderer);
+				btn->renderFunction(btn, renderer);
 			}
 			for (auto& btn : layer.TextBoxes) {
-				btn->Render(renderer);
+				btn->renderFunction(btn, renderer);
 			}
 			for (auto& btn : layer.PopUpBoxes) {
-				btn->Render(renderer);
+				btn->renderFunction(btn, renderer);
 			}
 		}
 		Zlayers.clear();
@@ -438,9 +404,8 @@ void UI::RenderRawText(Font* font, const int x, const int y, const std::string& 
 	font->RenderRawText(renderer, x, y, text, interline, R, G, B);
 }
 
-
-Button* UI::CreateButton(std::string name, int x, int y, int w, int h, MT::Texture* texture, Font* font,
-	std::string text, float textScale, int textStartX, int textStartY, int borderThickness) {
+Button* UI::CreateButton(const std::string& name, int x, int y, int w, int h, MT::Texture* texture, Font* font,
+	const std::string& text, float textScale, int textStartX, int textStartY, int borderThickness) {
 
 	if (GetButton(name) != nullptr) {
 		std::cout << "Warning name collision button with name: " << name << " already exists addition abborted\n";
@@ -450,10 +415,8 @@ Button* UI::CreateButton(std::string name, int x, int y, int w, int h, MT::Textu
 	Buttons.emplace_back(new Button());
 	Button* btn = Buttons.back();
 	btn->SetName(name);
-	btn->GetRectangle().x = x;
-	btn->GetRectangle().y = y;
-	btn->GetRectangle().w = w;
-	btn->GetRectangle().h = h;
+	btn->GetRectangle().Set(x, y, w, h);
+	btn->SetRenderType(1);
 
 	btn->SetTexture(texture);
 
@@ -465,7 +428,6 @@ Button* UI::CreateButton(std::string name, int x, int y, int w, int h, MT::Textu
 	}
 
 	btn->SetTextStartX(textStartX);
-
 	btn->SetTextStartY(textStartY);
 
 	if (borderThickness > 0) {
@@ -477,8 +439,8 @@ Button* UI::CreateButton(std::string name, int x, int y, int w, int h, MT::Textu
 	return btn;
 }
 
-TextBox* UI::CreateTextBox(std::string name, int x, int y, int w, int h, MT::Texture* texture, Font* font,
-	std::string text, float textScale, int textStartX, int textStartY, int borderThickness) {
+TextBox* UI::CreateTextBox(const std::string& name, int x, int y, int w, int h, MT::Texture* texture, Font* font,
+	const std::string& text, float textScale, int textStartX, int textStartY, int borderThickness) {
 
 	if (GetTextBox(name) != nullptr) {
 		std::cout << "Warning name collision massage box with name: " << name << " already exists addition abborted\n";
@@ -488,10 +450,8 @@ TextBox* UI::CreateTextBox(std::string name, int x, int y, int w, int h, MT::Tex
 	TextBoxes.emplace_back(new TextBox());
 	TextBox* tb = TextBoxes.back();
 	tb->SetName(name);
-	tb->GetRectangle().x = x;
-	tb->GetRectangle().y = y;
-	tb->GetRectangle().w = w;
-	tb->GetRectangle().h = h;
+	tb->GetRectangle().Set(x, y, w, h);
+	tb->SetRenderType(1);
 
 	tb->SetTexture(texture);
 
@@ -504,7 +464,6 @@ TextBox* UI::CreateTextBox(std::string name, int x, int y, int w, int h, MT::Tex
 	}
 
 	tb->SetTextStartX(textStartX);
-
 	tb->SetTextStartY(textStartY);
 
 
@@ -517,21 +476,19 @@ TextBox* UI::CreateTextBox(std::string name, int x, int y, int w, int h, MT::Tex
 	return tb;
 }
 
-ClickBox* UI::CreateClickBox(std::string name, int x, int y, int w, int h, MT::Texture* texture, Font* font,
-	std::string text, float textScale, int textStartX, int textStartY, int borderThickness) {
+ClickBox* UI::CreateClickBox(const std::string& name, int x, int y, int w, int h, MT::Texture* texture, Font* font,
+	const std::string& text, float textScale, int textStartX, int textStartY, int borderThickness) {
 
 	if (GetClickBox(name) != nullptr) {
-		std::cout << "Warning name collision interaction box with name: " << name << " already exists addition abborted\n";
+		std::cout << "Warning name collision click box with name: " << name << " already exists addition abborted\n";
 		return nullptr;
 	}
 
 	ClickBoxes.emplace_back(new ClickBox());
 	ClickBox* cb = ClickBoxes.back();
 	cb->SetName(name);
-	cb->GetRectangle().x = x;
-	cb->GetRectangle().y = y;
-	cb->GetRectangle().w = w;
-	cb->GetRectangle().h = h;
+	cb->GetRectangle().Set(x, y, w, h);
+	cb->SetRenderType(1);
 
 	cb->SetTexture(texture);
 
@@ -544,7 +501,6 @@ ClickBox* UI::CreateClickBox(std::string name, int x, int y, int w, int h, MT::T
 	}
 
 	cb->SetTextStartX(textStartX);
-
 	cb->SetTextStartY(textStartY);
 
 	if (borderThickness > 0) {
@@ -556,8 +512,8 @@ ClickBox* UI::CreateClickBox(std::string name, int x, int y, int w, int h, MT::T
 	return cb;
 }
 
-PopUpBox* UI::CreatePopUpBox(std::string name, int lifeSpan, int x, int y, int w, int h, MT::Texture* texture, Font* font,
-	std::string text, float textScale, int textStartX, int textStartY, int borderThickness) {
+PopUpBox* UI::CreatePopUpBox(const std::string& name, int lifeSpan, int x, int y, int w, int h, MT::Texture* texture, Font* font,
+	const std::string& text, float textScale, int textStartX, int textStartY, int borderThickness) {
 	if (GetPopUpBox(name) != nullptr) {
 		std::cout << "Warning name collision interaction box with name: " << name << " already exists addition abborted\n";
 		return nullptr;
@@ -567,10 +523,8 @@ PopUpBox* UI::CreatePopUpBox(std::string name, int lifeSpan, int x, int y, int w
 	PopUpBox* pb = PopUpBoxes.back();
 	pb->SetName(name);
 	pb->SetLifeTime(lifeSpan);
-	pb->GetRectangle().x = x;
-	pb->GetRectangle().y = y;
-	pb->GetRectangle().w = w;
-	pb->GetRectangle().h = h;
+	pb->GetRectangle().Set(x, y, w, h);
+	pb->SetRenderType(1);
 
 	pb->SetTexture(texture);
 
@@ -583,7 +537,6 @@ PopUpBox* UI::CreatePopUpBox(std::string name, int lifeSpan, int x, int y, int w
 	}
 
 	pb->SetTextStartX(textStartX);
-
 	pb->SetTextStartY(textStartY);
 
 	if (borderThickness > 0) {
@@ -595,14 +548,25 @@ PopUpBox* UI::CreatePopUpBox(std::string name, int lifeSpan, int x, int y, int w
 	return pb;
 }
 
-void UI::AddListRef(ClickBoxList* ref) {
-	ListReferences.emplace_back(ref);
+Button* UI::CreateButtonF(const std::string& name, int x, int y, int w, int h, MT::Texture* texture, const std::string& fontSt,
+	const std::string& text, float textScale, int textStartX, int textStartY, int borderThickness) {
+	return CreateButton(name, x, y, w, h, texture, GetFont(fontSt), text, textScale, textStartX, textStartY, borderThickness);
 }
 
-void UI::RemoveListRef(ClickBoxList* ref) {
-	std::erase(ListReferences, ref);
+TextBox* UI::CreateTextBoxF(const std::string& name, int x, int y, int w, int h, MT::Texture* texture, const std::string& fontSt,
+	const std::string& text, float textScale, int textStartX, int textStartY, int borderThickness) {
+	return CreateTextBox(name, x, y, w, h, texture, GetFont(fontSt), text, textScale, textStartX, textStartY, borderThickness);
 }
 
+ClickBox* UI::CreateClickBoxF(const std::string& name, int x, int y, int w, int h, MT::Texture* texture, const std::string& fontSt,
+	const std::string& text, float textScale, int textStartX, int textStartY, int borderThickness) {
+	return CreateClickBox(name, x, y, w, h, texture, GetFont(fontSt), text, textScale, textStartX, textStartY, borderThickness);
+}
+
+PopUpBox* UI::CreatePopUpBoxF(const std::string& name, int lifeSpan, int x, int y, int w, int h, MT::Texture* texture, const std::string& fontSt,
+	const std::string& text, float textScale, int textStartX, int textStartY, int borderThickness) {
+	return CreatePopUpBox(name, lifeSpan, x, y, w, h, texture, GetFont(fontSt), text, textScale, textStartX, textStartY, borderThickness);
+}
 
 void UI::CheckHover() {
 	int x, y;
@@ -922,11 +886,20 @@ void UI::ScanFont(const std::string& texturePath, const std::string& charactersD
 
 void UI::ClearAll(bool clearLists) {
 	if (clearLists) {
-		for (auto& it : ListReferences) {
+		for (auto& it : ListBtnRef) {
 			it->Clear();
 		}
-
-		ListReferences.clear();
+		ListBtnRef.clear();
+		for (auto& it : ListTbRef) {
+			it->Clear();
+		}
+		ListBtnRef.clear();
+		for (auto& it : ListCbRef) {
+			it->Clear();
+		}
+		ListBtnRef.clear();
+		ListTbRef.clear();
+		ListCbRef.clear();
 	}
 
 	for (auto& it : Buttons) {
@@ -944,6 +917,7 @@ void UI::ClearAll(bool clearLists) {
 	Buttons.clear();
 	TextBoxes.clear();
 	ClickBoxes.clear();
+	PopUpBoxes.clear();
 
 	UIElemMap.clear();
 }

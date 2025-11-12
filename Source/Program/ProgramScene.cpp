@@ -72,6 +72,25 @@ void ProgramScene::FrameUpdate(){
 	}
 
 	else if (panelType == 2) {
+		if (ui->GetClickBox("KeyUpdateAll")->ConsumeStatus()) {
+			ui->GetClickBox("KeyEditName")->SetStatus(true);
+			ui->GetClickBox("KeyEditX")->SetStatus(true);
+			ui->GetClickBox("KeyEditY")->SetStatus(true);
+			ui->GetClickBox("KeyEditW")->SetStatus(true);
+			ui->GetClickBox("KeyEditH")->SetStatus(true);
+			ui->GetClickBox("KeyEditFont")->SetStatus(true);
+			ui->GetClickBox("KeyEditText")->SetStatus(true);
+			ui->GetClickBox("KeyEditTextX")->SetStatus(true);
+			ui->GetClickBox("KeyEditTextY")->SetStatus(true);
+
+			ui->GetClickBox("KeyTextRender")->SetStatus(true);
+			ui->GetClickBox("KeyZLayer")->SetStatus(true);
+			ui->GetClickBox("KeyRenderType")->SetStatus(true);
+			ui->GetClickBox("KeyColor")->SetStatus(true);
+			ui->GetClickBox("KeyBorder")->SetStatus(true);
+			ui->GetClickBox("KeyFontColor")->SetStatus(true);
+		}
+
 		if (ui->GetClickBox("KeyEditName")->ConsumeStatus()) {
 			editedButton->SetName(ui->GetTextBox("KeyEditNametb")->GetText());
 		}
@@ -142,6 +161,17 @@ void ProgramScene::FrameUpdate(){
 			int val = 0;
 			if (ArgToInt(ui->GetTextBox("KeyZLayertb")->GetText(), val)) {
 				editedButton->SetZLayer(val);
+			}
+		}
+		else if (ui->GetClickBox("KeyRenderType")->ConsumeStatus()) {
+			int val = 0;
+			if (ArgToInt(ui->GetTextBox("KeyRenderTypetb")->GetText(), val)) {
+				editedButton->SetRenderType(val);
+				for (auto& it : elements) {
+					if (it.btn == editedButton) {
+						it.renderType = val;
+					}
+				}
 			}
 		}
 		else if (ui->GetClickBox("KeyColor")->ConsumeStatus()) {
@@ -397,7 +427,11 @@ void ProgramScene::ShowEditPanel(Button *button) {
 	editedButton = button;
 	rightPanel->Show();
 
-	int y = rightPanel->GetRectangle().y + 20;
+	int y = rightPanel->GetRectangle().y + 10;
+
+	ui->CreateClickBoxF("KeyUpdateAll", Global::windowWidth - 80, Global::windowHeight / 2, 70, 30, nullptr, "arial12px", "Update All");
+	SetUpBasicElem(ui->GetClickBox("KeyUpdateAll"));
+	ui->GetClickBox("KeyUpdateAll")->SetHoverFilter(true, 255, 255, 255, 120);
 
 	CreateEditBox("KeyEditName", y, "Key: ",editedButton->GetName());
 	CreateEditBox("KeyEditX", y, "X: ",std::to_string(editedButton->GetRectangle().x));
@@ -429,6 +463,7 @@ void ProgramScene::ShowEditPanel(Button *button) {
 	CreateEditBox("KeyEditTextY", y, "Text Y: ", std::to_string(editedButton->GetTextStartY()));
 	CreateEditBox("KeyTextRender", y, "Text Render: ", std::to_string(editedButton->textRenderType));
 	CreateEditBox("KeyZLayer", y, "Z Layer: ", std::to_string(editedButton->zLayer));
+	CreateEditBox("KeyRenderType", y, "Render Type: ", "");
 
 	unsigned char* color = editedButton->buttonColor;
 	CreateQuadEditBox("KeyColor", y, "Color", std::to_string(color[0]),
