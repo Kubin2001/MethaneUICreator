@@ -5,6 +5,16 @@
 #include "Helpers.h"
 #include "Printer.h"
 
+void CreateErrorBox(UI* ui, const std::string& text) {
+	int random = RandInt(0, 2000);
+	PopUpBox* pb = ui->CreatePopUpBox("PBName" + std::to_string(random), 240, 10, 10, Global::windowWidth / 3, 100,
+		nullptr, ui->GetFont("arial12px"), text);
+
+	pb->SetColor(200, 200, 200);
+	pb->SetFontColor(255, 0, 0);
+	pb->SetRenderTextType(2);
+}
+
 void ProgramScene::Init(MT::Renderer* renderer, UI* ui){
 	this->renderer = renderer;
 	this->ui = ui;
@@ -67,6 +77,32 @@ void ProgramScene::FrameUpdate(){
 				Global::defaultDrawColor[0] = argR;
 				Global::defaultDrawColor[1] = argG;
 				Global::defaultDrawColor[2] = argB;
+			}
+		}
+		if (ui->GetClickBox("WindowW")->ConsumeStatus()) {
+			int val = 0;
+			if (ArgToInt(ui->GetTextBox("WindowWtb")->GetText(), val)) {
+				if (val >= 300 && val <= 4000) {
+					Global::windowWidth = val;
+					SDL_SetWindowSize(SceneMan::GetData<SDL_Window*>("Window"), val, Global::windowHeight);
+					rightPanel->GetRectangle().Set(Global::windowWidth - 300, 0, 300, Global::windowHeight);
+				}
+				else {
+					CreateErrorBox(ui, "Size must be between 300 and 4000");
+				}
+			}
+		}
+		if (ui->GetClickBox("WindowH")->ConsumeStatus()) {
+			int val = 0;
+			if (ArgToInt(ui->GetTextBox("WindowHtb")->GetText(), val)) {
+				if (val >= 300 && val <= 4000) {
+					Global::windowHeight = val;
+					SDL_SetWindowSize(SceneMan::GetData<SDL_Window*>("Window"), Global::windowWidth, val);
+					rightPanel->GetRectangle().Set(Global::windowWidth - 300, 0, 300, Global::windowHeight);
+				}
+				else {
+					CreateErrorBox(ui, "Size must be between 300 and 4000");
+				}
 			}
 		}
 	}
@@ -254,6 +290,42 @@ void ProgramScene::Input(SDL_Event& event){
 				outOptions = false;
 			}
 		}
+		else if (event.key.keysym.scancode == SDL_SCANCODE_DELETE) {
+			CreatedElement* elem = nullptr;
+			Point p = GetMousePos();
+			MT::Rect mouseRect{ p.x,p.y,1,1 };
+			for (auto& it : elements) { // bez break aby by³ wybierany najnowszy zawsze
+				if (it.btn->GetRectangle().IsColliding(mouseRect)) {
+					elem = &it;
+				}
+			}
+			if (elem != nullptr) {
+				if (elem->btn == editedButton) { HideEditPanel(editedButton); }
+				ui->DeleteButton(elem->btn->GetName());
+				std::erase_if(elements, [&](const CreatedElement& e) {return &e == elem;});
+			}
+		}
+
+		else if (event.key.keysym.scancode == SDL_SCANCODE_C) {
+			CreatedElement* elem = nullptr;
+			Point p = GetMousePos();
+			MT::Rect mouseRect{ p.x,p.y,1,1 };
+			for (auto& it : elements) { // bez break aby by³ wybierany najnowszy zawsze
+				if (it.btn->GetRectangle().IsColliding(mouseRect)) {
+					elem = &it;
+				}
+			}
+			if (elem != nullptr) {
+				selectedButton.btn = ui->CreateButton(elem->btn->GetName() + "copy" + std::to_string(rand()),10,10,10,10);
+				if (selectedButton.btn == nullptr) {
+					return;
+				}
+				*selectedButton.btn = *elem->btn;
+				selectedButton.btn->SetName(elem->btn->GetName() + "copy" + std::to_string(rand()));
+				selectedButton.renderType = elem->renderType;
+				selectedButton.type = elem->type;
+			}
+		}
 	}
 
 	if (event.type == SDL_MOUSEBUTTONUP) {
@@ -326,6 +398,12 @@ void ProgramScene::ShowPanel() {
 	std::string B = std::to_string(Global::defaultDrawColor[2]);
 
 	CreateTripleEditBox("BackRgb", y, "BackGround", R, G, B);
+
+	SDL_Window* window = SceneMan::GetData<SDL_Window*>("Window");
+	int winW, winH;
+	SDL_GetWindowSize(window,&winW,&winH);
+	CreateEditBox("WindowW", y, "Window W: ", std::to_string(winW));
+	CreateEditBox("WindowH", y, "Window H: ", std::to_string(winH));
 
 	panelType = 1;
 }
@@ -495,6 +573,7 @@ void ProgramScene::HideEditPanel(Button* button) {
 	editBtnRef.clear();
 	editTextRef.clear();
 	editClickRef.clear();
+	ui->DeleteClickBox("KeyUpdateAll");
 	editedButton = nullptr;
 	panelType = 0;
 }

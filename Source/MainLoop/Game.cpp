@@ -53,6 +53,8 @@ void Game::Start() {
 	SceneMan::AddRegisterScene(programScene, "ProgramScene", [] {return new ProgramScene; });
 
 	SceneMan::SwitchResetScene("ProgramScene", renderer, ui.get());
+
+	SceneMan::AddData<SDL_Window*>("Window", window);
 }
 
 
