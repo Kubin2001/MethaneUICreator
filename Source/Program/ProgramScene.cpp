@@ -4,6 +4,7 @@
 
 #include "Helpers.h"
 #include "Printer.h"
+#include "Loader.h"
 
 void CreateErrorBox(UI* ui, const std::string& text) {
 	int random = RandInt(0, 2000);
@@ -280,7 +281,7 @@ void ProgramScene::Input(SDL_Event& event){
 				HidePanel();
 			}
 		}
-		else if (event.key.keysym.scancode == SDL_SCANCODE_O) {
+		else if (event.key.keysym.scancode == SDL_SCANCODE_O) { // output
 			if (!outOptions) {
 				CreateOutputSubPanel();
 				outOptions = true;
@@ -289,6 +290,9 @@ void ProgramScene::Input(SDL_Event& event){
 				HideOutputSubPanel();
 				outOptions = false;
 			}
+		}
+		else if (event.key.keysym.scancode == SDL_SCANCODE_I) { // input
+			LoadUIFromText(ui, "README.md");
 		}
 		else if (event.key.keysym.scancode == SDL_SCANCODE_DELETE) {
 			CreatedElement* elem = nullptr;
