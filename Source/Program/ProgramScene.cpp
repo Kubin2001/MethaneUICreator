@@ -109,103 +109,157 @@ void ProgramScene::FrameUpdate(){
 	}
 
 	else if (panelType == 2) {
-		if (ui->GetClickBox("KeyUpdateAll")->ConsumeStatus()) {
-			ui->GetClickBox("KeyEditName")->SetStatus(true);
-			ui->GetClickBox("KeyEditX")->SetStatus(true);
-			ui->GetClickBox("KeyEditY")->SetStatus(true);
-			ui->GetClickBox("KeyEditW")->SetStatus(true);
-			ui->GetClickBox("KeyEditH")->SetStatus(true);
-			ui->GetClickBox("KeyEditFont")->SetStatus(true);
-			ui->GetClickBox("KeyEditText")->SetStatus(true);
-			ui->GetClickBox("KeyEditTextX")->SetStatus(true);
-			ui->GetClickBox("KeyEditTextY")->SetStatus(true);
+		Button* btn = editedButton->btn;
+		if (editPanelState == 1) {
+			if (editedButton->btn != nullptr) {
 
-			ui->GetClickBox("KeyTextRender")->SetStatus(true);
-			ui->GetClickBox("KeyZLayer")->SetStatus(true);
-			ui->GetClickBox("KeyRenderType")->SetStatus(true);
-			ui->GetClickBox("KeyColor")->SetStatus(true);
-			ui->GetClickBox("KeyBorder")->SetStatus(true);
-			ui->GetClickBox("KeyFontColor")->SetStatus(true);
+				if (ui->GetClickBox("XAxisToogle")->ConsumeStatus()) {
+					if (editedButton->xAxisBlock) {
+						editedButton->xAxisBlock = false;
+						ui->GetClickBox("XAxisToogle")->SetColor(0, 100, 200, 0);
+					}
+					else {
+						editedButton->xAxisBlock = true;
+						ui->GetClickBox("XAxisToogle")->SetColor(0, 100, 200, 255);
+					}
+
+				}
+				if (ui->GetClickBox("YAxisToogle")->ConsumeStatus()) {
+					if (editedButton->yAxisBlock) {
+						editedButton->yAxisBlock = false;
+						ui->GetClickBox("YAxisToogle")->SetColor(0, 100, 200, 0);
+					}
+					else {
+						editedButton->yAxisBlock = true;
+						ui->GetClickBox("YAxisToogle")->SetColor(0, 100, 200, 255);
+					}
+				}
+			}
+			else {
+				std::println("Edited is null");
+			}
+
+		}
+
+		if (ui->GetClickBox("KeyUpdateAll")->ConsumeStatus()) {
+			for (auto& it : editClickRef) {
+				it->SetStatus(true);
+			}
+		}
+
+		if (ui->GetClickBox("setingBtn")->ConsumeStatus()) {
+			if (editPanelState == 0) {
+				ui->GetClickBox("XAxisToogle")->TurnOn();
+				ui->GetClickBox("XAxisToogle")->Show();
+				ui->GetClickBox("YAxisToogle")->TurnOn();
+				ui->GetClickBox("YAxisToogle")->Show();
+				for (auto& it : editClickRef) {
+					it->Hide();
+					it->TurnOff();
+				}
+				for (auto& it : editTextRef) {
+					it->Hide();
+				}
+				ui->GetClickBox("KeyUpdateAll")->Hide();
+				ui->GetClickBox("KeyUpdateAll")->TurnOff();
+				editPanelState = 1;
+			}
+			else {
+				ui->GetClickBox("XAxisToogle")->Hide();
+				ui->GetClickBox("XAxisToogle")->TurnOff();
+				ui->GetClickBox("YAxisToogle")->Hide();
+				ui->GetClickBox("YAxisToogle")->TurnOff();
+				for (auto& it : editClickRef) {
+					it->Show();
+					it->TurnOn();
+				}
+				for (auto& it : editTextRef) {
+					it->Show();
+				}
+				ui->GetClickBox("KeyUpdateAll")->Show();
+				ui->GetClickBox("KeyUpdateAll")->TurnOn();
+				editPanelState = 0;
+			}
 		}
 
 		if (ui->GetClickBox("KeyEditName")->ConsumeStatus()) {
-			editedButton->SetName(ui->GetTextBox("KeyEditNametb")->GetText());
+			btn->SetName(ui->GetTextBox("KeyEditNametb")->GetText());
 		}
 		else if (ui->GetClickBox("KeyEditX")->ConsumeStatus()) {
 			int val = 0;
 			if (ArgToInt(ui->GetTextBox("KeyEditXtb")->GetText(), val)) {
-				editedButton->GetRectangle().x = val;
+				btn->GetRectangle().x = val;
 			}
 		}
 		else if (ui->GetClickBox("KeyEditY")->ConsumeStatus()) {
 			int val = 0;
 			if (ArgToInt(ui->GetTextBox("KeyEditYtb")->GetText(), val)) {
-				editedButton->GetRectangle().y = val;
+				btn->GetRectangle().y = val;
 			}
 		}
 		else if (ui->GetClickBox("KeyEditW")->ConsumeStatus()) {
 			int val = 0;
 			if (ArgToInt(ui->GetTextBox("KeyEditWtb")->GetText(), val)) {
-				editedButton->GetRectangle().w = val;
+				btn->GetRectangle().w = val;
 			}
 		}
 		else if (ui->GetClickBox("KeyEditH")->ConsumeStatus()) {
 			int val = 0;
 			if (ArgToInt(ui->GetTextBox("KeyEditHtb")->GetText(), val)) {
-				editedButton->GetRectangle().h = val;
+				btn->GetRectangle().h = val;
 			}
 		}
 		else if (ui->GetClickBox("KeyEditTexture")->ConsumeStatus()) {
 			std::string& textureName = ui->GetTextBox("KeyEditTexturetb")->GetText();
 			if (TexMan::GetTex(textureName) != nullptr) {
-				editedButton->SetTexture(TexMan::GetTex(textureName));
+				btn->SetTexture(TexMan::GetTex(textureName));
 			}
 		}
 		else if (ui->GetClickBox("KeyEditFont")->ConsumeStatus()) {
 			std::string& textureName = ui->GetTextBox("KeyEditFonttb")->GetText();
 			if (ui->GetFont(textureName) != nullptr) {
-				editedButton->SetFont(ui->GetFont(textureName));
+				btn->SetFont(ui->GetFont(textureName));
 			}
 		}
 		else if (ui->GetClickBox("KeyEditText")->ConsumeStatus()) {
-			editedButton->SetText(ui->GetTextBox("KeyEditTexttb")->GetText());
+			btn->SetText(ui->GetTextBox("KeyEditTexttb")->GetText());
 		}
 		else if (ui->GetClickBox("KeyEditTextSize")->ConsumeStatus()) {
 			float val = 0.0f;
 			if (ArgToFloat(ui->GetTextBox("KeyEditTextSizetb")->GetText(), val)) {
-				editedButton->SetTextScale(val);
+				btn->SetTextScale(val);
 			}
 		}
 		else if (ui->GetClickBox("KeyEditTextX")->ConsumeStatus()) {
 			int val = 0;
 			if (ArgToInt(ui->GetTextBox("KeyEditTextXtb")->GetText(), val)) {
-				editedButton->SetTextStartX(val);
+				btn->SetTextStartX(val);
 			}
 		}
 		else if (ui->GetClickBox("KeyEditTextY")->ConsumeStatus()) {
 			int val = 0;
 			if (ArgToInt(ui->GetTextBox("KeyEditTextYtb")->GetText(), val)) {
-				editedButton->SetTextStartY(val);
+				btn->SetTextStartY(val);
 			}
 		}
 		else if (ui->GetClickBox("KeyTextRender")->ConsumeStatus()) {
 			int val = 0;
 			if (ArgToInt(ui->GetTextBox("KeyTextRendertb")->GetText(), val)) {
-				editedButton->SetRenderTextType(val);
+				btn->SetRenderTextType(val);
 			}
 		}
 		else if (ui->GetClickBox("KeyZLayer")->ConsumeStatus()) {
 			int val = 0;
 			if (ArgToInt(ui->GetTextBox("KeyZLayertb")->GetText(), val)) {
-				editedButton->SetZLayer(val);
+				btn->SetZLayer(val);
 			}
 		}
 		else if (ui->GetClickBox("KeyRenderType")->ConsumeStatus()) {
 			int val = 0;
 			if (ArgToInt(ui->GetTextBox("KeyRenderTypetb")->GetText(), val)) {
-				editedButton->SetRenderType(val);
+				btn->SetRenderType(val);
 				for (auto& it : elements) {
-					if (it.btn == editedButton) {
+					if (it.btn == btn) {
 						it.renderType = val;
 					}
 				}
@@ -221,7 +275,7 @@ void ProgramScene::FrameUpdate(){
 			unsigned char argB = 0;
 			unsigned char argA = 0;
 			if (ArgToUCHar(R, argR) && ArgToUCHar(G, argG)&& ArgToUCHar(B, argB)&& ArgToUCHar(A, argA)) {
-				editedButton->SetColor(argR, argG, argB, argA);
+				btn->SetColor(argR, argG, argB, argA);
 			}
 		}
 		else if (ui->GetClickBox("KeyBorder")->ConsumeStatus()) {
@@ -234,7 +288,7 @@ void ProgramScene::FrameUpdate(){
 			unsigned char argG = 0;
 			unsigned char argB = 0;
 			if (ArgToInt(W, argW) && ArgToUCHar(R, argR) && ArgToUCHar(G, argG) && ArgToUCHar(B, argB)) {
-				editedButton->SetBorder(argW, argR, argG, argB);
+				btn->SetBorder(argW, argR, argG, argB);
 			}
 		}
 		else if (ui->GetClickBox("KeyFontColor")->ConsumeStatus()) {
@@ -245,7 +299,7 @@ void ProgramScene::FrameUpdate(){
 			unsigned char argG = 0;
 			unsigned char argB = 0;
 			if (ArgToUCHar(R, argR) && ArgToUCHar(G, argG) && ArgToUCHar(B, argB)) {
-				editedButton->SetFontColor(argR, argG, argB);
+				btn->SetFontColor(argR, argG, argB);
 			}
 		}
 	}
@@ -282,6 +336,7 @@ void ProgramScene::Input(SDL_Event& event){
 			}
 		}
 		else if (event.key.keysym.scancode == SDL_SCANCODE_O) { // output
+			if (panelType == 2) { return; }
 			if (!outOptions) {
 				CreateOutputSubPanel();
 				outOptions = true;
@@ -304,7 +359,13 @@ void ProgramScene::Input(SDL_Event& event){
 				}
 			}
 			if (elem != nullptr) {
-				if (elem->btn == editedButton) { HideEditPanel(editedButton); }
+				if (elem == editedButton) { 
+					HideEditPanel(editedButton);
+					editedButton = nullptr;
+				}
+				if (elem == selectedButton) {
+					selectedButton = nullptr;
+				}
 				ui->DeleteButton(elem->btn->GetName());
 				std::erase_if(elements, [&](const CreatedElement& e) {return &e == elem;});
 			}
@@ -320,14 +381,13 @@ void ProgramScene::Input(SDL_Event& event){
 				}
 			}
 			if (elem != nullptr) {
-				selectedButton.btn = ui->CreateButton(elem->btn->GetName() + "copy" + std::to_string(rand()),10,10,10,10);
-				if (selectedButton.btn == nullptr) {
-					return;
-				}
-				*selectedButton.btn = *elem->btn;
-				selectedButton.btn->SetName(elem->btn->GetName() + "copy" + std::to_string(rand()));
-				selectedButton.renderType = elem->renderType;
-				selectedButton.type = elem->type;
+				std::string id = std::to_string(rand());
+				CreatedElement newElement(ui->CreateButton(elem->btn->GetName() + "copy" + id, 10, 10, 10, 10),elem->type);
+				newElement.renderType = elem->renderType;
+				*newElement.btn = *elem->btn;
+				newElement.btn->name = elem->btn->GetName() + "copy" + id;
+				elements.emplace_back(newElement);
+				selectedButton = &elements.back();
 			}
 		}
 	}
@@ -336,14 +396,13 @@ void ProgramScene::Input(SDL_Event& event){
 		Point p = GetMousePos();
 		MT::Rect mouseRect{ p.x,p.y,1,1 };
 		if (event.button.button == SDL_BUTTON_LEFT) {;
-			if (selectedButton.btn != nullptr) {
-				elements.emplace_back(selectedButton);
-				selectedButton.btn = nullptr;
+			if (selectedButton != nullptr) {
+				selectedButton = nullptr;
 			}
 			else {
 				for (auto& it : elements) { // bez break aby by³ wybierany najnowszy zawsze
 					if (it.btn->GetRectangle().IsColliding(mouseRect)) {
-						selectedButton.btn = it.btn;
+						selectedButton = &it;
 					}
 				}
 			}
@@ -354,7 +413,7 @@ void ProgramScene::Input(SDL_Event& event){
 			bool found = false;
 			for (auto& it : elements) {
 				if (it.btn->GetRectangle().IsColliding(mouseRect)) {
-					ShowEditPanel(it.btn);
+					ShowEditPanel(&it);
 					found = true;
 				}
 			}
@@ -415,16 +474,12 @@ void ProgramScene::ShowPanel() {
 void ProgramScene::HidePanel() {
 	rightPanel->Hide();
 	btnCreateList.Clear();
-	for (auto& btn : editBtnRef) {
-		ui->DeleteButton(btn->GetName());
-	}
 	for (auto& btn : editTextRef) {
 		ui->DeleteTextBox(btn->GetName());
 	}
 	for (auto& btn : editClickRef) {
 		ui->DeleteClickBox(btn->GetName());
 	}
-	editBtnRef.clear();
 	editTextRef.clear();
 	editClickRef.clear();
 	panelType = 0;
@@ -502,28 +557,36 @@ void ProgramScene::CreateQuadEditBox(const std::string& name, int& y, const std:
 	y += 40;
 }
 
-void ProgramScene::ShowEditPanel(Button *button) {
+void ProgramScene::ShowEditPanel(CreatedElement *button) {
+
 	if (panelType == 2) {
 		HideEditPanel(button);
 	}
 	editedButton = button;
+	Button *ebBtn = editedButton->btn;
 	rightPanel->Show();
+	editPanelTwo.Init(ui);
 
 	int y = rightPanel->GetRectangle().y + 10;
+
+	ClickBox* cb = ui->CreateClickBox("setingBtn", Global::windowWidth -40, 10, 30, 30, TexMan::GetTex("kogIcon"));
+	cb->SetBorder(1, 0, 100, 200);
+	cb->SetHoverFilter(true, 255, 255, 255, 120);
+
 
 	ui->CreateClickBoxF("KeyUpdateAll", Global::windowWidth - 80, Global::windowHeight / 2, 70, 30, nullptr, "arial12px", "Update All");
 	SetUpBasicElem(ui->GetClickBox("KeyUpdateAll"));
 	ui->GetClickBox("KeyUpdateAll")->SetHoverFilter(true, 255, 255, 255, 120);
 
-	CreateEditBox("KeyEditName", y, "Key: ",editedButton->GetName());
-	CreateEditBox("KeyEditX", y, "X: ",std::to_string(editedButton->GetRectangle().x));
-	CreateEditBox("KeyEditY", y, "Y: ", std::to_string(editedButton->GetRectangle().y));
-	CreateEditBox("KeyEditW", y, "W: ", std::to_string(editedButton->GetRectangle().w));
-	CreateEditBox("KeyEditH", y, "H: ", std::to_string(editedButton->GetRectangle().h));
+	CreateEditBox("KeyEditName", y, "Key: ", ebBtn->GetName());
+	CreateEditBox("KeyEditX", y, "X: ",std::to_string(ebBtn->GetRectangle().x));
+	CreateEditBox("KeyEditY", y, "Y: ", std::to_string(ebBtn->GetRectangle().y));
+	CreateEditBox("KeyEditW", y, "W: ", std::to_string(ebBtn->GetRectangle().w));
+	CreateEditBox("KeyEditH", y, "H: ", std::to_string(ebBtn->GetRectangle().h));
 	std::string textureName = "";
-	if (editedButton->GetTexture() != nullptr) {
+	if (ebBtn->GetTexture() != nullptr) {
 		for (auto& it : TexMan::Textures) {
-			if (editedButton->GetTexture() == it.second) {
+			if (ebBtn->GetTexture() == it.second) {
 				textureName = it.first;
 			}
 		}
@@ -531,54 +594,70 @@ void ProgramScene::ShowEditPanel(Button *button) {
 
 	CreateEditBox("KeyEditTexture", y, "Texture: ",textureName);
 	std::string fontStr = "";
-	if (editedButton->GetFont() != nullptr) {
+	if (ebBtn->GetFont() != nullptr) {
 		for (auto& it : ui->fontManager->fonts) {
-			if (it == editedButton->GetFont()) {
+			if (it == ebBtn->GetFont()) {
 				fontStr = it->GetName();
 			}
 		}
 	}
 	CreateEditBox("KeyEditFont", y, "Font: ",fontStr);
-	CreateEditBox("KeyEditText", y, "Text: ",editedButton->GetText());
-	CreateEditBox("KeyEditTextSize", y, "TextSize: ",std::to_string(editedButton->GetTextScale()));
-	CreateEditBox("KeyEditTextX", y, "Text X: ", std::to_string(editedButton->GetTextStartX()));
-	CreateEditBox("KeyEditTextY", y, "Text Y: ", std::to_string(editedButton->GetTextStartY()));
-	CreateEditBox("KeyTextRender", y, "Text Render: ", std::to_string(editedButton->textRenderType));
-	CreateEditBox("KeyZLayer", y, "Z Layer: ", std::to_string(editedButton->zLayer));
+	CreateEditBox("KeyEditText", y, "Text: ", ebBtn->GetText());
+	CreateEditBox("KeyEditTextSize", y, "TextSize: ",std::to_string(ebBtn->GetTextScale()));
+	CreateEditBox("KeyEditTextX", y, "Text X: ", std::to_string(ebBtn->GetTextStartX()));
+	CreateEditBox("KeyEditTextY", y, "Text Y: ", std::to_string(ebBtn->GetTextStartY()));
+	CreateEditBox("KeyTextRender", y, "Text Render: ", std::to_string(ebBtn->textRenderType));
+	CreateEditBox("KeyZLayer", y, "Z Layer: ", std::to_string(ebBtn->zLayer));
 	CreateEditBox("KeyRenderType", y, "Render Type: ", "");
 
-	unsigned char* color = editedButton->buttonColor;
+	unsigned char* color = ebBtn->buttonColor;
 	CreateQuadEditBox("KeyColor", y, "Color", std::to_string(color[0]),
 		std::to_string(color[1]), std::to_string(color[2]),std::to_string(color[3]));
 
-	unsigned char* borderRGB = editedButton->borderRGB;
-	CreateQuadEditBox("KeyBorder", y, "Border", std::to_string(editedButton->borderThickness),
+	unsigned char* borderRGB = ebBtn->borderRGB;
+	CreateQuadEditBox("KeyBorder", y, "Border", std::to_string(ebBtn->borderThickness),
 		std::to_string(borderRGB[0]), std::to_string(borderRGB[1]),std::to_string(borderRGB[2]));
 
-	unsigned char* fontColor = editedButton->fontRGB;
+	unsigned char* fontColor = ebBtn->fontRGB;
 
 	CreateTripleEditBox("KeyFontColor", y, "Font Color", std::to_string(fontColor[0]),
 		std::to_string(fontColor[1]), std::to_string(fontColor[2]));
 
+
+	editPanelTwo.Add(ui->CreateClickBoxF("XAxisToogle",Global::windowWidth -100,100,30,30,nullptr,"arial12px"));
+	editPanelTwo.GetClickBoxes().back()->SetBorder(1, 0, 100, 200);
+	editPanelTwo.GetClickBoxes().back()->SetColor(255, 255, 255, 0);
+	editPanelTwo.GetClickBoxes().back()->TurnOff();
+	editPanelTwo.GetClickBoxes().back()->SetText("X Axis Block");
+	editPanelTwo.GetClickBoxes().back()->SetTextStartX(-80);
+	editPanelTwo.GetClickBoxes().back()->SetTextStartY(10);
+	editPanelTwo.GetClickBoxes().back()->Hide();
+	editPanelTwo.Add(ui->CreateClickBoxF("YAxisToogle", Global::windowWidth - 100, 150, 30, 30, nullptr, "arial12px"));
+	editPanelTwo.GetClickBoxes().back()->SetBorder(1, 0, 100, 200);
+	editPanelTwo.GetClickBoxes().back()->SetColor(255, 255, 255, 0);
+	editPanelTwo.GetClickBoxes().back()->Hide();
+	editPanelTwo.GetClickBoxes().back()->SetText("Y Axis Block");
+	editPanelTwo.GetClickBoxes().back()->SetTextStartX(-80);
+	editPanelTwo.GetClickBoxes().back()->SetTextStartY(10);
+	editPanelState = 0;
 	panelType = 2;
 }
 
-void ProgramScene::HideEditPanel(Button* button) {
+void ProgramScene::HideEditPanel(CreatedElement* button) {
 	rightPanel->Hide();
-	for (auto& btn : editBtnRef) {
-		ui->DeleteButton(btn->GetName());
-	}
 	for (auto& btn : editTextRef) {
 		ui->DeleteTextBox(btn->GetName());
 	}
 	for (auto& btn : editClickRef) {
 		ui->DeleteClickBox(btn->GetName());
 	}
-	editBtnRef.clear();
 	editTextRef.clear();
 	editClickRef.clear();
 	ui->DeleteClickBox("KeyUpdateAll");
+	ui->DeleteClickBox("setingBtn");
 	editedButton = nullptr;
+	editPanelTwo.Clear();
+	editPanelState = 0;
 	panelType = 0;
 }
 
@@ -666,21 +745,25 @@ void ProgramScene::HideRunPanel() {
 }
 
 void ProgramScene::CreateNewElem(const int type) {
-	if (selectedButton.btn != nullptr) { return; }
+	if (selectedButton != nullptr) { return; }
 	index++;
 	int x, y;
 	SDL_GetMouseState(&x, &y);
-	selectedButton.btn = ui->CreateButton("btn" + std::to_string(index), x - 50, y - 50, 100, 100);
-	selectedButton.type = type;
+	elements.emplace_back(ui->CreateButton("btn" + std::to_string(index), x - 50, y - 50, 100, 100), type);
+	selectedButton = &elements.back();
 	HidePanel();
 }
 
 void ProgramScene::MoveSelected() {
-	if (selectedButton.btn == nullptr) { return; }
+	if (selectedButton == nullptr) { return; }
 	int x, y;
 	SDL_GetMouseState(&x, &y);
-	selectedButton.btn->GetRectangle().x = x - (selectedButton.btn->GetRectangle().w / 2);
-	selectedButton.btn->GetRectangle().y = y - (selectedButton.btn->GetRectangle().h / 2);
+	if (!selectedButton->xAxisBlock) {
+		selectedButton->btn->GetRectangle().x = x - (selectedButton->btn->GetRectangle().w / 2);
+	}
+	if (!selectedButton->yAxisBlock) {
+		selectedButton->btn->GetRectangle().y = y - (selectedButton->btn->GetRectangle().h / 2);
+	}
 }
 
 void ProgramScene::CreateOutputSubPanel() {

@@ -3,18 +3,21 @@
 #include "SceneManager.h"
 #include "CreatedElement.h"
 
+
+
 class ProgramScene :public Scene{
 	private:
 		ClickBox* runButton = nullptr;
 		Button* rightPanel = nullptr;
 		UIList<ClickBox> btnCreateList;
 		std::vector<CreatedElement> elements;
-		CreatedElement selectedButton;
-		Button* editedButton = nullptr;
+		CreatedElement* selectedButton;
+		CreatedElement* editedButton = nullptr;
 		int index = 0;
 		int panelType = 0; //0 no panel 1 Creation Panel 2 Edit Panel  3 run panel
+		int editPanelState = 0;// 0 normal 1 smaller options
 
-		std::vector<Button*> editBtnRef;
+		UISection editPanelTwo;
 		std::vector<TextBox*> editTextRef;
 		std::vector<ClickBox*> editClickRef;
 
@@ -38,9 +41,9 @@ class ProgramScene :public Scene{
 		void CreateQuadEditBox(const std::string& name, int& y, const std::string& text,
 			const std::string& arg1 = "", const std::string& arg2 = "", const std::string& arg3 = "", const std::string& arg4 = "");
 
-		void ShowEditPanel(Button* button);
+		void ShowEditPanel(CreatedElement* button);
 
-		void HideEditPanel(Button* button);
+		void HideEditPanel(CreatedElement* button);
 
 		void ShowRunPanel();
 
