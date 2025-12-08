@@ -48,11 +48,10 @@ void Game::Start() {
 	ui->CreateFont("arial20px", TexMan::GetTex("arial20px"), "Textures/Interface/Fonts/arial20px.json");
 	ui->CreateFont("arial12px", TexMan::GetTex("arial12px"), "Textures/Interface/Fonts/arial12px.json");
 
-	ProgramScene *programScene = new ProgramScene();
 
-	SceneMan::AddRegisterScene(programScene, "ProgramScene", [] {return new ProgramScene; });
+	SceneMan::AddScene<ProgramScene>("ProgramScene");
 
-	SceneMan::SwitchResetScene("ProgramScene", renderer, ui.get());
+	SceneMan::SwitchScene<ProgramScene>("ProgramScene", renderer, ui.get());
 
 	SceneMan::AddData<SDL_Window*>("Window", window);
 }
@@ -89,7 +88,7 @@ void Game::Render() {
 	renderer->ClearFrame(Global::defaultDrawColor[0], Global::defaultDrawColor[1], Global::defaultDrawColor[2]);
 	SceneMan::GetCurrentScene()->Render();
 	ui->Render();
-	renderer->RenderPresent();
+	renderer->Present();
 }
 
 

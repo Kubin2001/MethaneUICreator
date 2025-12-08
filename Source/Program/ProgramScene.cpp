@@ -16,10 +16,7 @@ void CreateErrorBox(UI* ui, const std::string& text) {
 	pb->SetRenderTextType(2);
 }
 
-void ProgramScene::Init(MT::Renderer* renderer, UI* ui){
-	this->renderer = renderer;
-	this->ui = ui;
-	
+void ProgramScene::Init(){
 	//EditorFunctions::CreateFunctions();
 
 	rightPanel = ui->CreateButton("Right Panel", Global::windowWidth - 300,0,300,Global::windowHeight);
@@ -315,11 +312,22 @@ void ProgramScene::FrameUpdate(){
 			ui->GetClickBox("brnDirOut")->SetColor(0,255,0);
 			ui->GetClickBox("btnRefOpt")->SetColor(255, 0, 0);
 		}
+
+		if (ui->GetClickBox("outJsonCb")->ConsumeStatus()) {
+			std::vector<UIElemBase*> dumpElements;
+			for (auto& elem : elements) {
+				dumpElements.emplace_back(elem.btn);
+			}
+			ui->DumpToJson("jsonDump",dumpElements);
+		}
 		if(ui->GetClickBox("outConfBtn")->ConsumeStatus()){
 			OutputUILayout(elements, ui, outputType);
 			HideOutputSubPanel();
 			outOptions = false;
 		}
+
+
+
 	}
 
 	MoveSelected();
@@ -610,18 +618,18 @@ void ProgramScene::ShowEditPanel(CreatedElement *button) {
 	CreateEditBox("KeyZLayer", y, "Z Layer: ", std::to_string(ebBtn->zLayer));
 	CreateEditBox("KeyRenderType", y, "Render Type: ", "");
 
-	unsigned char* color = ebBtn->buttonColor;
-	CreateQuadEditBox("KeyColor", y, "Color", std::to_string(color[0]),
-		std::to_string(color[1]), std::to_string(color[2]),std::to_string(color[3]));
+	MT::ColorA color = ebBtn->buttonColor;
+	CreateQuadEditBox("KeyColor", y, "Color", std::to_string(color.R),
+		std::to_string(color.G), std::to_string(color.B),std::to_string(color.A));
 
-	unsigned char* borderRGB = ebBtn->borderRGB;
+	MT::Color borderRGB = ebBtn->borderRGB;
 	CreateQuadEditBox("KeyBorder", y, "Border", std::to_string(ebBtn->borderThickness),
-		std::to_string(borderRGB[0]), std::to_string(borderRGB[1]),std::to_string(borderRGB[2]));
+		std::to_string(borderRGB.R), std::to_string(borderRGB.G),std::to_string(borderRGB.B));
 
-	unsigned char* fontColor = ebBtn->fontRGB;
+	MT::Color fontColor = ebBtn->fontRGB;
 
-	CreateTripleEditBox("KeyFontColor", y, "Font Color", std::to_string(fontColor[0]),
-		std::to_string(fontColor[1]), std::to_string(fontColor[2]));
+	CreateTripleEditBox("KeyFontColor", y, "Font Color", std::to_string(fontColor.R),
+		std::to_string(fontColor.G), std::to_string(fontColor.B));
 
 
 	editPanelTwo.Add(ui->CreateClickBoxF("XAxisToogle",Global::windowWidth -100,100,30,30,nullptr,"arial12px"));
@@ -673,9 +681,9 @@ void ConvertElement(T* cBtn, Button *btn, UI *Ui) {
 	cBtn->SetTextStartX(btn->GetTextStartX());
 	cBtn->SetTextStartY(btn->GetTextStartY());
 	cBtn->SetRenderTextType(btn->textRenderType);
-	cBtn->SetColor(btn->buttonColor[0], btn->buttonColor[1], btn->buttonColor[2], btn->buttonColor[3]);
-	cBtn->SetBorder(btn->borderThickness, btn->borderRGB[0], btn->borderRGB[1], btn->borderRGB[2]);
-	cBtn->SetFontColor(btn->fontRGB[0], btn->fontRGB[1], btn->fontRGB[2]);
+	cBtn->SetColor(btn->buttonColor.R, btn->buttonColor.G, btn->buttonColor.B, btn->buttonColor.A);
+	cBtn->SetBorder(btn->borderThickness, btn->borderRGB.R, btn->borderRGB.G, btn->borderRGB.B);
+	cBtn->SetFontColor(btn->fontRGB.R, btn->fontRGB.G, btn->fontRGB.B);
 }
 
 void ProgramScene::ShowRunPanel() {
@@ -767,28 +775,40 @@ void ProgramScene::MoveSelected() {
 }
 
 void ProgramScene::CreateOutputSubPanel() {
-	Button *btn = ui->CreateButton("outBtnBack", 100, 100, 200, 250,nullptr,ui->GetFont("arial20px"),"OutputOptions",1.0f,0,10);
+	Button *btn = ui->CreateButton("outBtnBack", 100, 100, 400, 250,nullptr,ui->GetFont("arial20px"),"OutputOptions",1.0f,0,10);
 	btn->SetRenderTextType(4);
 	btn->SetColor(50, 30, 50, 255);
 	btn->SetBorder(2, 100, 100, 255);
 
+	auto Adjust = [](ClickBox* cb) {
+		cb->SetBorder(1, 100, 100, 255);
+		cb->SetHoverFilter(true, 255, 255, 255, 120, "hoverSound");
+	};
+
 	ClickBox *cb = ui->CreateClickBox("btnRefOpt", 120, 160, 60, 60, nullptr, ui->GetFont("arial12px"), "Reference", 1.0f, 0, -15);
 	cb->SetRenderTextType(4);
 	cb->SetColor(255, 0, 0, 255);
-	cb->SetBorder(1, 100, 100, 255);
-	cb->SetHoverFilter(true, 255, 255, 255, 120,"hoverSound");
+	Adjust(cb);
 
 	cb = ui->CreateClickBox("brnDirOut", 220, 160, 60, 60, nullptr, ui->GetFont("arial12px"), "Direct", 1.0f, 0, -15);
 	cb->SetRenderTextType(4);
 	cb->SetColor(0, 255, 0, 255);
-	cb->SetBorder(1, 100, 100, 255);
-	cb->SetHoverFilter(true, 255, 255, 255, 120,"hoverSound");
+	Adjust(cb);
 
-	cb = ui->CreateClickBox("outConfBtn", 150, 240, 100, 50, nullptr, ui->GetFont("arial20px"), "Confirm");
+	cb = ui->CreateClickBox("outJsonCb", 320, 160, 60, 60, nullptr, ui->GetFont("arial12px"), "Json", 1.0f, 0, -15);
+	cb->SetRenderTextType(4);
+	cb->SetColor(255, 0, 0, 255);
+	Adjust(cb);
+
+	cb = ui->CreateClickBox("loadJsonCb", 420, 160, 60, 60, nullptr, ui->GetFont("arial12px"), "JsonLoad", 1.0f, 0, -15);
+	cb->SetRenderTextType(4);
+	cb->SetColor(0, 255, 0, 255);
+	Adjust(cb);
+
+	cb = ui->CreateClickBox("outConfBtn", 300, 240, 100, 50, nullptr, ui->GetFont("arial20px"), "Confirm");
 	cb->SetRenderTextType(2);
 	cb->SetColor(70, 30, 70, 255);
-	cb->SetBorder(2, 50, 50, 255);
-	cb->SetHoverFilter(true, 255, 255, 255, 120,"hoverSound");
+	Adjust(cb);
 
 }
 

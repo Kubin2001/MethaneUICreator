@@ -1,9 +1,10 @@
 #include "UI.h"
 
+#include <fstream>
+
+#include "json.hpp"
 #include "Colision.h"
 #include "GlobalVariables.h"
-
-#include <chrono>
 
 //UIElemBase
 
@@ -11,11 +12,11 @@ std::string& UIElemBase::GetName() {
 	return name;
 }
 
-void UIElemBase::SetName(const std::string value) {
+void UIElemBase::SetName(const std::string &value) {
 	name = value;
 }
 
-void UIElemBase::SetText(std::string temptext) {
+void UIElemBase::SetText(const std::string &temptext) {
 	text = temptext;
 }
 
@@ -64,9 +65,9 @@ void UIElemBase::SetBorderThickness(const int temp) {
 void UIElemBase::SetBorder(const int width, const unsigned char R, const unsigned char G, const unsigned char B) {
 	border = true;
 	borderThickness = width;
-	borderRGB[0] = R;
-	borderRGB[1] = G;
-	borderRGB[2] = B;
+	borderRGB.R = R;
+	borderRGB.G = G;
+	borderRGB.B = B;
 }
 
 int UIElemBase::GetTextStartX() {
@@ -83,25 +84,25 @@ void UIElemBase::SetTextStartY(int temp) {
 }
 
 void UIElemBase::SetColor(const unsigned char R, const unsigned char G, const unsigned char B , const unsigned char A) {
-	buttonColor[0] = R;
-	buttonColor[1] = G;
-	buttonColor[2] = B;
-	buttonColor[3] = A;
+	buttonColor.R = R;
+	buttonColor.G = G;
+	buttonColor.B = B;
+	buttonColor.A = A;
 }
 
 
 void UIElemBase::SetBorderRGB(const unsigned char R, const unsigned char G, const unsigned char B) {
-	borderRGB[0] = R;
-	borderRGB[1] = G;
-	borderRGB[2] = B;
+	borderRGB.R = R;
+	borderRGB.G = G;
+	borderRGB.B = B;
 }
 
 void UIElemBase::SetFontColor(const unsigned char R, const unsigned char G, const unsigned char B) {
 	if (font != nullptr) {
 		if (font->GetTexture() != nullptr) {
-			fontRGB[0] = R;
-			fontRGB[1] = G;
-			fontRGB[2] = B;
+			fontRGB.R = R;
+			fontRGB.G = G;
+			fontRGB.B = B;
 		}
 	}
 }
@@ -112,15 +113,23 @@ void UIElemBase::Render(UIElemBase* elem, MT::Renderer* renderer) {
 			elem->RenderItslelf(renderer);
 		}
 		else {
-			renderer->RenderCopy(elem->rectangle, elem->texture);
-			if (elem->hovered && elem->hoverable) {
-				renderer->RenderRect(elem->rectangle,
-					{ elem->hooverFilter[0], elem->hooverFilter[1], elem->hooverFilter[2] }, elem->hooverFilter[3]);
+			renderer->RenderCopyUPR(elem->rectangle, elem->texture);
+			if (elem->GetBorder()) {
+				MT::Rect& rect = elem->rectangle;
+				MT::Rect leftLine{ rect.x, rect.y, elem->borderThickness, rect.h };
+				MT::Rect upperLine{ rect.x, rect.y, rect.w, elem->borderThickness };
+				MT::Rect rightLine{ (rect.x + rect.w - elem->borderThickness), rect.y, elem->borderThickness, rect.h };
+				MT::Rect downLine{ rect.x, (rect.y + rect.h - elem->borderThickness), rect.w, elem->borderThickness };
+
+				renderer->RenderRectUPR(leftLine, { elem->borderRGB.R, elem->borderRGB.G, elem->borderRGB.B });
+				renderer->RenderRectUPR(upperLine, { elem->borderRGB.R, elem->borderRGB.G, elem->borderRGB.B });
+				renderer->RenderRectUPR(rightLine, { elem->borderRGB.R, elem->borderRGB.G, elem->borderRGB.B });
+				renderer->RenderRectUPR(downLine, { elem->borderRGB.R, elem->borderRGB.G, elem->borderRGB.B });
 			}
 		}
-
-		if (elem->GetBorder()) {
-			elem->RenderBorder(renderer);
+		if (elem->hovered && elem->hoverable) {
+			renderer->RenderRectUPR(elem->rectangle,
+				{ elem->hoverFilter.R, elem->hoverFilter.G, elem->hoverFilter.B }, elem->hoverFilter.A);
 		}
 		elem->RenderText(renderer);
 	}
@@ -128,56 +137,88 @@ void UIElemBase::Render(UIElemBase* elem, MT::Renderer* renderer) {
 
 void UIElemBase::RenderRounded(UIElemBase* elem, MT::Renderer* renderer) {
 	if (!elem->hidden) {
-		if (elem->GetTexture() == nullptr) {
-			elem->RenderItslelfRounded(renderer);
-		}
-		else {
-			renderer->RenderCopyRoundedRect(elem->rectangle, elem->texture);
-			if (elem->hovered && elem->hoverable) {
-				renderer->RenderRoundedRect(elem->rectangle,
-					{ elem->hooverFilter[0], elem->hooverFilter[1], elem->hooverFilter[2] }, elem->hooverFilter[3]);
-			}
+		elem->RenderItslelfRounded(renderer);
+		if (elem->hovered && elem->hoverable) {
+			renderer->RenderRoundedRectUPR(elem->rectangle,
+				{ elem->hoverFilter.R, elem->hoverFilter.G, elem->hoverFilter.B }, elem->hoverFilter.A);
 		}
 		elem->RenderText(renderer);
 	}
 }
 
 void UIElemBase::RenderItslelf(MT::Renderer* renderer) {
-	if (hovered && hoverable) {
-		renderer->RenderRect(rectangle, { buttonColor[0], buttonColor[1], buttonColor[2]}, buttonColor[3]);
-		renderer->RenderRect(rectangle, { hooverFilter[0], hooverFilter[1], hooverFilter[2] }, hooverFilter[3]);
+	if (!border) {
+		renderer->RenderRectUPR(rectangle, { buttonColor.R, buttonColor.G, buttonColor.B }, buttonColor.A);
 	}
-	else{
-		renderer->RenderRect(rectangle, { buttonColor[0], buttonColor[1], buttonColor[2]},buttonColor[3]);
+	else {
+		MT::Rect newBtnRect = rectangle;
+		int width = 0;
+		if (borderThickness % 2 == 0) {
+			width = borderThickness / 2;
+		}
+		else {
+			width = (borderThickness / 2) + 1;
+		}
+		newBtnRect.x += borderThickness;
+		newBtnRect.y += borderThickness;
+		newBtnRect.w -= borderThickness * 2;
+		newBtnRect.h -= borderThickness * 2;
+		renderer->RenderRectUPR(rectangle, { borderRGB.R, borderRGB.G, borderRGB.B }, 255);
+		renderer->RenderRectUPR(newBtnRect, { buttonColor.R, buttonColor.G, buttonColor.B }, buttonColor.A);
 	}
 }
 
 void UIElemBase::RenderItslelfRounded(MT::Renderer* renderer) {
-	if (hovered && hoverable) {
-		renderer->RenderRoundedRect(rectangle, { buttonColor[0], buttonColor[1], buttonColor[2] }, buttonColor[3]);
-		renderer->RenderRoundedRect(rectangle, { hooverFilter[0], hooverFilter[1], hooverFilter[2] }, hooverFilter[3]);
+	if (texture == nullptr) {
+		if (!border) {
+			renderer->RenderRoundedRectUPR(rectangle, { buttonColor.R, buttonColor.G, buttonColor.B }, buttonColor.A);
+		}
+		else {
+			MT::Rect newBtnRect = rectangle;
+			int width = 0;
+			if (borderThickness % 2 == 0) {
+				width = borderThickness / 2;
+			}
+			else {
+				width = (borderThickness / 2) + 1;
+			}
+			newBtnRect.x += borderThickness;
+			newBtnRect.y += borderThickness;
+			newBtnRect.w -= borderThickness * 2;
+			newBtnRect.h -= borderThickness * 2;
+			renderer->RenderRoundedRectUPR(rectangle, { borderRGB.R, borderRGB.G, borderRGB.B }, 255);
+			renderer->RenderRoundedRectUPR(newBtnRect, { buttonColor.R, buttonColor.G, buttonColor.B }, buttonColor.A);
+		}
 	}
 	else {
-		renderer->RenderRoundedRect(rectangle, { buttonColor[0], buttonColor[1], buttonColor[2] }, buttonColor[3]);
+		if (!border) {
+			renderer->RenderCopyRoundedRectUPR(rectangle, texture);
+		}
+		else {
+			MT::Rect newBtnRect = rectangle;
+			int width = 0;
+			if (borderThickness % 2 == 0) {
+				width = borderThickness / 2;
+			}
+			else {
+				width = (borderThickness / 2) + 1;
+			}
+			newBtnRect.x += borderThickness;
+			newBtnRect.y += borderThickness;
+			newBtnRect.w -= borderThickness * 2;
+			newBtnRect.h -= borderThickness * 2;
+			renderer->RenderRoundedRectUPR(rectangle, { borderRGB.R, borderRGB.G, borderRGB.B }, 255);
+			renderer->RenderCopyRoundedRectUPR(newBtnRect, texture);
+		}
 	}
+
 }
 
-void UIElemBase::RenderBorder(MT::Renderer* renderer) {
-	MT::Rect leftLine{ rectangle.x, rectangle.y, borderThickness, rectangle.h };
-	MT::Rect upperLine{ rectangle.x, rectangle.y, rectangle.w, borderThickness };
-	MT::Rect rightLine{ (rectangle.x + rectangle.w - borderThickness), rectangle.y, borderThickness, rectangle.h };
-	MT::Rect downLine{ rectangle.x, (rectangle.y + rectangle.h - borderThickness), rectangle.w, borderThickness };
-
-	renderer->RenderRect(leftLine, { borderRGB[0], borderRGB[1], borderRGB[2] });
-	renderer->RenderRect(upperLine, { borderRGB[0], borderRGB[1], borderRGB[2] });
-	renderer->RenderRect(rightLine, { borderRGB[0], borderRGB[1], borderRGB[2] });
-	renderer->RenderRect(downLine, { borderRGB[0], borderRGB[1], borderRGB[2] });
-}
 
 void UIElemBase::RenderText(MT::Renderer* renderer) {
 	if (font != nullptr) {
 		if (text.empty()) { return; }
-		font->SetFilter(fontRGB[0], fontRGB[1], fontRGB[2]);
+		font->SetFilter(fontRGB.R, fontRGB.G, fontRGB.B);
 		switch (textRenderType) {
 			case 1:
 				font->RenderText(renderer, text, rectangle, textScale, interLine, textStartX, textStartY);
@@ -240,15 +281,20 @@ void UIElemBase::SetHover(bool temp) {
 
 void UIElemBase::SetHoverFilter(const bool filter, const unsigned char R, const unsigned char G, const unsigned char B, const unsigned char A, const std::string& sound) {
 	this->hoverable = filter;
-	hooverFilter[0] = R;
-	hooverFilter[1] = G;
-	hooverFilter[2] = B;
-	hooverFilter[3] = A;
-	hooverSound = sound;
+	hoverFilter.R = R;
+	hoverFilter.G = G;
+	hoverFilter.B = B;
+	hoverFilter.A = A;
+	if (sound == "") {
+		hoverSound = nullptr;
+	}
+	else {
+		hoverSound = SoundMan::GetSound(sound);
+	}
 }
 
-std::string& UIElemBase::GetHooverSound() {
-	return hooverSound;
+Mix_Chunk* UIElemBase::GetHooverSound() {
+	return hoverSound;
 }
 
 int UIElemBase::GetZLayer() {
@@ -576,10 +622,10 @@ void UI::CheckHover() {
 		if (SimpleCollision(it->GetRectangle(), rect)) {
 			it->SetHover(true);
 			// patrzenie czy mo¿e byæ wydany dŸwiêk tylko wtedy zadzia³a gdy mysz pierwszy raz jest na przycisku
-			if (it->GetHooverSound() != "") { 
+			if (it->GetHooverSound() != nullptr) { 
 				MT::Rect prevMousePos{ lastMousePos.x,lastMousePos.y,1,1 };
 				if (!SimpleCollision(prevMousePos, it->GetRectangle())) {
-					SoundMan::PlaySound(it->GetHooverSound());
+					SoundMan::PlayRawSound(it->GetHooverSound());
 				}
 			}
 		}
@@ -591,10 +637,10 @@ void UI::CheckHover() {
 		if (SimpleCollision(it->GetRectangle(), rect)) {
 			it->SetHover(true);
 			// patrzenie czy mo¿e byæ wydany dŸwiêk tylko wtedy zadzia³a gdy mysz pierwszy raz jest na przycisku
-			if (it->GetHooverSound() != "") {
+			if (it->GetHooverSound() != nullptr) {
 				MT::Rect prevMousePos{ lastMousePos.x,lastMousePos.y,1,1 };
 				if (!SimpleCollision(prevMousePos, it->GetRectangle())) {
-					SoundMan::PlaySound(it->GetHooverSound());
+					SoundMan::PlayRawSound(it->GetHooverSound());
 				}
 			}
 		}
@@ -606,10 +652,10 @@ void UI::CheckHover() {
 		if (SimpleCollision(it->GetRectangle(), rect)) {
 			it->SetHover(true);
 			// patrzenie czy mo¿e byæ wydany dŸwiêk tylko wtedy zadzia³a gdy mysz pierwszy raz jest na przycisku
-			if (it->GetHooverSound() != "") {
+			if (it->GetHooverSound() != nullptr) {
 				MT::Rect prevMousePos{ lastMousePos.x,lastMousePos.y,1,1 };
 				if (!SimpleCollision(prevMousePos, it->GetRectangle())) {
-					SoundMan::PlaySound(it->GetHooverSound());
+					SoundMan::PlayRawSound(it->GetHooverSound());
 				}
 			}
 		}
@@ -882,6 +928,242 @@ void UI::ScanFont(const std::string& texturePath, const std::string& charactersD
 	unsigned char fR, unsigned char fG, unsigned char fB, unsigned char bR, unsigned char bG, unsigned char bB, Point size,
 	const std::string& outputPath) {
 	fontManager->ScanFont(texturePath, charactersDataPath, fR, fG, fB, bR, bG, bB, size.x, size.y);
+}
+
+
+
+void UI::DumpButton(nlohmann::ordered_json& json, UIElemBase* elem, int type) {
+	auto& jsonElem = json[elem->GetName()];
+
+	jsonElem["Type"] = type;
+	jsonElem["X"] = elem->GetRectangle().x;
+	jsonElem["Y"] = elem->GetRectangle().y;
+	jsonElem["W"] = elem->GetRectangle().w;
+	jsonElem["H"] = elem->GetRectangle().h;
+
+	std::string textureName = "";
+	for (auto& texture : TexMan::GetAllTex()) {
+		if (elem->texture == texture.second) {
+			textureName = texture.first;
+			break;
+		}
+	}
+	if (!textureName.empty()) {
+		jsonElem["Texture"] = textureName;
+	}
+
+	jsonElem["Text"] = elem->text;
+	jsonElem["TextScale"] = elem->textScale;
+	jsonElem["Border"] = elem->border;
+	jsonElem["BorderThinkness"] = elem->borderThickness;
+	jsonElem["TextStartX"] = elem->textStartX;
+	jsonElem["TextStartY"] = elem->textStartY;
+
+	jsonElem["ColorR"] = elem->buttonColor.R;
+	jsonElem["ColorG"] = elem->buttonColor.G;
+	jsonElem["ColorB"] = elem->buttonColor.B;
+	jsonElem["ColorA"] = elem->buttonColor.A;
+
+	jsonElem["BorderR"] = elem->borderRGB.R;
+	jsonElem["BorderG"] = elem->borderRGB.G;
+	jsonElem["BorderB"] = elem->borderRGB.B;
+
+	jsonElem["FontR"] = elem->fontRGB.R;
+	jsonElem["FontG"] = elem->fontRGB.G;
+	jsonElem["FontB"] = elem->fontRGB.B;
+
+	std::string fontName = "";
+	for (auto& font : fontManager->fonts) {
+		if (font == elem->font) {
+			fontName = font->GetName();
+			break;
+		}
+	}
+	if (!fontName.empty()) {
+		jsonElem["Font"] = fontName;
+	}
+	if (elem->renderFunction == &UIElemBase::Render) {
+		jsonElem["RenderType"] = 1;
+	}
+	else {
+		jsonElem["RenderType"] = 2;
+	}
+	jsonElem["TextRenderType"] = elem->textRenderType;
+	jsonElem["Hidden"] = elem->hidden;
+	jsonElem["Hovered"] = elem->hovered;
+	jsonElem["Hoverable"] = elem->hoverable;
+
+	jsonElem["HoverFilterR"] = elem->hoverFilter.R;
+	jsonElem["HoverFilterG"] = elem->hoverFilter.G;
+	jsonElem["HoverFilterB"] = elem->hoverFilter.B;
+	jsonElem["HoverFilterA"] = elem->hoverFilter.A;
+
+	std::string hooverSoundStr = "";
+	for (auto& sound : SoundMan::GetSounds()) {
+		if (elem->hoverSound == sound.second) {
+			hooverSoundStr = sound.first;
+			break;
+		}
+	}
+	if (!hooverSoundStr.empty()) {
+		jsonElem["HoverSound"] = hooverSoundStr;
+	}
+	jsonElem["Zlayer"] = elem->zLayer;
+}
+
+void UI::DumpClickBox(nlohmann::ordered_json& json, ClickBox* cb) {
+	auto& jsonElem = json[cb->GetName()];
+	jsonElem["TurnedOn"] = cb->turnedOn;
+	jsonElem["ClickSound"] = cb->clickSound;
+}
+
+void UI::DumpTextBox(nlohmann::ordered_json& json, TextBox* tb) {
+	auto& jsonElem = json[tb->GetName()];
+	jsonElem["TurnedOn"] = tb->turnedOn;
+}
+
+void UI::DumpPopUpBox(nlohmann::ordered_json& json, PopUpBox* pb) {
+	auto& jsonElem = json[pb->GetName()];
+	jsonElem["LifeTime"] = pb->lifeTime;
+}
+
+void UI::DumpToJson(const std::string &fileName, const std::vector<UIElemBase*>& elements) {
+	std::ofstream file(fileName + ".json");
+	if (!file.is_open()) {
+		return;
+	}
+	
+	nlohmann::ordered_json jsonFile;
+	for (auto& elem : elements) {
+		Button* btn = nullptr;
+		ClickBox* cb = nullptr;
+		TextBox* tb = nullptr;
+		PopUpBox* pb = nullptr;
+		btn = dynamic_cast<Button*>(elem);
+		if (btn != nullptr) {
+			DumpButton(jsonFile, elem,1);
+		}
+		cb = dynamic_cast<ClickBox*>(elem);
+		if (cb != nullptr) {
+			DumpButton(jsonFile, elem, 2);
+			DumpClickBox(jsonFile, cb);
+		}
+		tb = dynamic_cast<TextBox*>(elem);
+		if (tb != nullptr) {
+			DumpButton(jsonFile, elem, 3);
+			DumpTextBox(jsonFile, tb);
+		}
+		pb = dynamic_cast<PopUpBox*>(elem);
+		if (pb != nullptr) {
+			DumpButton(jsonFile, elem, 4);
+			DumpPopUpBox(jsonFile, pb);
+		}
+	}
+	file << jsonFile;
+}
+
+void UI::LoadFromJson(const std::string& fileName) {
+	std::ifstream file(fileName + ".json");
+	if (!file.is_open()) {
+		return;
+	}
+	nlohmann::json jsonFile;
+	try {
+		file >> jsonFile;
+	}
+	catch (const std::exception&) {
+		return;
+	}
+
+	for (auto& [key, val] : jsonFile.items()) {
+		if (key.empty()) {
+			continue;
+		}
+		int type = val["Type"];
+
+		std::unique_ptr<UIElemBase> elem = nullptr;
+
+		if (type == 1) {
+			elem = std::make_unique<Button>();
+		}
+		else if (type == 2) {
+			elem = std::make_unique<ClickBox>();
+		}
+		else if (type == 3) {
+			elem = std::make_unique<TextBox>();
+		}
+		else if (type == 4) {
+			elem = std::make_unique<PopUpBox>();
+		}
+
+		elem->name = key;
+		elem->GetRectangle().x = val["X"];
+		elem->GetRectangle().y = val["Y"];
+		elem->GetRectangle().w = val["W"];
+		elem->GetRectangle().h = val["H"];
+		if (val.contains("Texture")) {
+			elem->texture = TexMan::GetTex(val["Texture"]);
+		}
+		elem->text = val["Text"];
+		elem->textScale = val["TextScale"];
+		elem->border = val["Border"];
+		elem->borderThickness = val["BorderThinkness"];
+		elem->textStartX = val["TextStartX"];
+		elem->textStartY = val["TextStartY"];
+		elem->buttonColor.R = val["ColorR"];
+		elem->buttonColor.G = val["ColorG"];
+		elem->buttonColor.B = val["ColorB"];
+		elem->buttonColor.A = val["ColorA"];
+
+		elem->borderRGB.R = val["BorderR"];
+		elem->borderRGB.G = val["BorderG"];
+		elem->borderRGB.B = val["BorderB"];
+
+		elem->fontRGB.R = val["FontR"];
+		elem->fontRGB.G = val["FontG"];
+		elem->fontRGB.B = val["FontB"];
+		if (val.contains("Font")) {
+			elem->font = GetFont(val["Font"]);
+		}
+		int renderFunction = val["RenderType"];
+		elem->SetRenderType(renderFunction);
+		elem->textRenderType = val["TextRenderType"];
+		elem->hidden = val["Hidden"];
+		elem->hovered = val["Hovered"];
+		elem->hoverable = val["Hoverable"];
+
+		elem->hoverFilter.R = val["HoverFilterR"];
+		elem->hoverFilter.G = val["HoverFilterG"];
+		elem->hoverFilter.B = val["HoverFilterB"];
+		elem->hoverFilter.A = val["HoverFilterA"];
+
+		if (val.contains("HoverSound")) {
+			elem->hoverSound = SoundMan::GetSound(val["HoverSound"]);
+		}
+		elem->zLayer = val["Zlayer"];
+
+
+		if (type == 1) {
+			Button* btn = CreateButton(key, 0, 0, 0, 0);
+			*btn = *dynamic_cast<Button*>(elem.get());
+		}
+		else if (type == 2) {
+			ClickBox* cb = CreateClickBox(key, 0, 0, 0, 0);
+			*cb = *dynamic_cast<ClickBox*>(elem.get());
+			cb->turnedOn = val["TurnedOn"];
+			cb->clickSound = val["ClickSound"];
+		}
+		else if (type == 3) {
+			TextBox* tb = CreateTextBox(key, 0, 0, 0, 0);
+			*tb = *dynamic_cast<TextBox*>(elem.get());
+			tb->turnedOn = val["TurnedOn"];
+		}
+		else if (type == 4) {
+			PopUpBox* pb = CreatePopUpBox(key, 0, 0, 0, 0, 0);
+			*pb = *dynamic_cast<PopUpBox*>(elem.get());
+			pb->lifeTime = val["LifeTime"];
+		}
+	}
 }
 
 void UI::ClearAll(bool clearLists) {

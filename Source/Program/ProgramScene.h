@@ -58,7 +58,7 @@ class ProgramScene :public Scene{
 		void HideOutputSubPanel();
 
 	public:
-		void Init(MT::Renderer* renderer = nullptr, UI* ui = nullptr);
+		void Init();
 
 		void LogicUpdate();
 

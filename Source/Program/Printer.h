@@ -226,27 +226,27 @@ std::string ButtonToString(Button* button, int type, UI *ui, int renderType) {
 	if (renderType == 2) {
 		btnOutput += getBtnStr + "SetRenderType(" + std::to_string(renderType) + ");";
 	}
-	if (button->buttonColor[0] != 255 || button->buttonColor[1] != 255 || button->buttonColor[2] != 255 || button->buttonColor[3] != 255) {
+	if (button->buttonColor.R != 255 || button->buttonColor.G != 255 || button->buttonColor.B != 255 || button->buttonColor.A != 255) {
 		btnOutput += getBtnStr + "SetColor(" + 
-			std::to_string(button->buttonColor[0]) + ',' +
-			std::to_string(button->buttonColor[1]) + ',' +
-			std::to_string(button->buttonColor[2]) + ',' +
-			std::to_string(button->buttonColor[3]) + 
+			std::to_string(button->buttonColor.R) + ',' +
+			std::to_string(button->buttonColor.G) + ',' +
+			std::to_string(button->buttonColor.B) + ',' +
+			std::to_string(button->buttonColor.A) + 
 			+ ");";
 	}
-	if (button->borderThickness != 0 || button->borderRGB[0] != 255 || button->borderRGB[1] != 255 || button->borderRGB[2] != 255) {
+	if (button->borderThickness != 0 || button->borderRGB.R != 255 || button->borderRGB.G != 255 || button->borderRGB.B != 255) {
 		btnOutput += getBtnStr + "SetBorder(" +
 			std::to_string(button->borderThickness) + ',' +
-			std::to_string(button->borderRGB[0]) + ',' +
-			std::to_string(button->borderRGB[1]) + ',' +
-			std::to_string(button->borderRGB[2]) +
+			std::to_string(button->borderRGB.R) + ',' +
+			std::to_string(button->borderRGB.G) + ',' +
+			std::to_string(button->borderRGB.B) +
 			+");";
 	}
-	if (button->fontRGB[0] != 255 || button->fontRGB[1] != 255 || button->fontRGB[2] != 255) {
+	if (button->fontRGB.R != 255 || button->fontRGB.G != 255 || button->fontRGB.B != 255) {
 		btnOutput += getBtnStr + "SetFontColor(" +
-			std::to_string(button->fontRGB[0]) + ',' +
-			std::to_string(button->fontRGB[1]) + ',' +
-			std::to_string(button->fontRGB[2]) +
+			std::to_string(button->fontRGB.R) + ',' +
+			std::to_string(button->fontRGB.G) + ',' +
+			std::to_string(button->fontRGB.B) +
 			+");";
 	}
 

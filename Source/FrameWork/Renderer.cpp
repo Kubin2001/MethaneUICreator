@@ -7,7 +7,7 @@
 #include "Colision.h"
 #include "TextureManager.h"
 
-SDL_Surface* FlipSurfaceVertical(SDL_Surface* surface) {
+SDL_Surface * FlipSurfaceVertical(SDL_Surface * surface) {
     SDL_Surface* flipped = SDL_CreateRGBSurfaceWithFormat(0, surface->w, surface->h,
         surface->format->BitsPerPixel,
         surface->format->format);
@@ -23,14 +23,14 @@ SDL_Surface* FlipSurfaceVertical(SDL_Surface* surface) {
     return flipped;
 }
 
-SDL_GLContext MT::Innit(SDL_Window *window) {
+SDL_GLContext MT::Innit(SDL_Window* window) {
 
     SDL_GLContext context = SDL_GL_CreateContext(window);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 
-    
+
     if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress)) {
         std::cerr << "Failed to initialize GLAD\n";
         SDL_DestroyWindow(window);
@@ -55,7 +55,7 @@ MT::Texture* MT::LoadTexture(const char* path) {
 
     SDL_Surface* surf = IMG_Load(path);
 
-    MT::Texture *metTex = new MT::Texture;
+    MT::Texture* metTex = new MT::Texture;
     metTex->texture = texture;
     if (!surf) {
         std::cout << "Failed to load image MT::LoadTexture: " << IMG_GetError() << "\n";
@@ -77,7 +77,7 @@ MT::Texture* MT::LoadTexture(const char* path) {
 }
 
 void MT::DeleteTexture(Texture* tex) {
-    glDeleteTextures(1,&tex->texture);
+    glDeleteTextures(1, &tex->texture);
     tex->texture = 0;
     tex->w = 0;
     tex->h = 0;
@@ -151,7 +151,10 @@ bool MT::Renderer::Start(SDL_Window* window, SDL_GLContext context) {
 
     //Rectangle
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0); // powierzchnie
-    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(2* sizeof(float))); // kolory + alpha
+    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(2 * sizeof(float))); // kolory + alpha
+
+    //Render Copy Base
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0); // powierzchnie + aplha bez tekstur
 
     //Render Copy
     glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0); // powierzchnie
@@ -171,9 +174,15 @@ bool MT::Renderer::Start(SDL_Window* window, SDL_GLContext context) {
     glVertexAttribPointer(11, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0); // powierzchnie + radius
     glVertexAttribPointer(12, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float))); // uv + alpha
 
+    //URP Shader
+    glVertexAttribPointer(13, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0); // Nie zdefiniowane ale raczej pozycje + coś
+    glVertexAttribPointer(14, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float))); // Texture lub kolory
+    glVertexAttribPointer(15, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float))); // Bonus jakis
+
 
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
+    glEnableVertexAttribArray(2);
     glEnableVertexAttribArray(3);
     glEnableVertexAttribArray(4);
     glEnableVertexAttribArray(6);
@@ -184,9 +193,33 @@ bool MT::Renderer::Start(SDL_Window* window, SDL_GLContext context) {
     glEnableVertexAttribArray(11);
     glEnableVertexAttribArray(12);
 
+    glEnableVertexAttribArray(13);
+    glEnableVertexAttribArray(14);
+    glEnableVertexAttribArray(15);
 
+
+    LoadShaders();
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    renderCopyId = loader.GetProgram("RenderCopy");
+    renderBaseId = loader.GetProgram("RenderCopyBase");
+    renderRectId = loader.GetProgram("RenderRect");
+    renderCopyCircleId = loader.GetProgram("RenderCopyCircle");
+    renderCircleId = loader.GetProgram("RenderCircle");
+    renderCopyFilterId = loader.GetProgram("RenderCopyFilter");
+    renderRoundedRectId = loader.GetProgram("RenderRoundedRectangle");
+    renderCopyRoundedRectId = loader.GetProgram("RenderCopyRoundedRectangle");
+    uprId = loader.GetProgram("RenderUPR");
+
+    roundRectRadius = glGetUniformLocation(renderRoundedRectId, "uPixelSize");
+    roundRectCopyRadius = glGetUniformLocation(renderCopyRoundedRectId, "uPixelSize");
+    return true;
+}
+
+void MT::Renderer::LoadShaders() {
     if (!loader.IsProgram("RenderRect")) {
-        constexpr const char * vertexStr = R"glsl(
+        constexpr const char* vertexStr = R"glsl(
         #version 330 core
         layout(location = 0) in vec2 aPos;
         layout(location = 1) in vec4 aColor;
@@ -215,6 +248,49 @@ bool MT::Renderer::Start(SDL_Window* window, SDL_GLContext context) {
         )glsl";
 
         loader.CreateProgramStr("RenderRect", vertexStr, fragmentStr);
+    }
+
+    if (!loader.IsProgram("RenderCopyBase")) {
+        constexpr const char* vertexStr = R"glsl(
+        #version 330 core
+        layout (location = 2) in vec3 aPosA;
+
+        vec2 uvFromVertexID(int id) {
+            if      (id == 0) return vec2(0.0, 0.0);
+            else if (id == 1) return vec2(0.0, 1.0);
+            else if (id == 2) return vec2(1.0, 0.0);
+            else if (id == 3) return vec2(0.0, 1.0);
+            else if (id == 4) return vec2(1.0, 1.0);
+            else              return vec2(1.0, 0.0);
+        }
+        out vec2 texCord;
+        out float vAlpha;
+
+        void main(){
+	        gl_Position = vec4(aPosA.xy, 0.0 ,1.0);
+            texCord = uvFromVertexID(gl_VertexID % 6);
+            vAlpha = aPosA.z;
+        }
+        )glsl";
+
+        constexpr const char* fragmentStr = R"glsl(
+        #version 330 core
+
+        out vec4 FragColor;
+
+        in vec2 texCord;
+        in float vAlpha;
+
+        uniform sampler2D texture1;
+
+        void main(){
+	        vec4 texcolor = texture(texture1,texCord);
+	        texcolor.a *= vAlpha;
+	        FragColor = texcolor;
+        }
+        )glsl";
+
+        loader.CreateProgramStr("RenderCopyBase", vertexStr, fragmentStr);
     }
 
     if (!loader.IsProgram("RenderCopy")) {
@@ -491,21 +567,203 @@ bool MT::Renderer::Start(SDL_Window* window, SDL_GLContext context) {
         loader.CreateProgramStr("RenderCopyRoundedRectangle", vertexStr, fragmentStr);
     }
 
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    renderCopyId = loader.GetProgram("RenderCopy");
-    renderRectId = loader.GetProgram("RenderRect");
-    renderCopyCircleId = loader.GetProgram("RenderCopyCircle");
-    renderCircleId = loader.GetProgram("RenderCircle");
-    renderCopyFilterId = loader.GetProgram("RenderCopyFilter");
-    renderRoundedRectId = loader.GetProgram("RenderRoundedRectangle");
-    renderCopyRoundedRectId = loader.GetProgram("RenderCopyRoundedRectangle");
-    
-    roundRectRadius = glGetUniformLocation(renderRoundedRectId, "uPixelSize");
-    roundRectCopyRadius = glGetUniformLocation(renderCopyRoundedRectId, "uPixelSize");
+    if (!loader.IsProgram("RenderUPR")) {
+        constexpr const char* vertexStr = R"glsl(
+        #version 330 core
 
-    globalVertices.reserve(1'000'000);
-    return true;
+        layout(location = 13) in vec3 vVecOne;
+        layout(location = 14) in vec3 vVecTwo;
+        layout(location = 15) in vec2 vVecThree; // vVecThree.y is always shader id
+
+        out vec4 oOutVec;
+        out vec4 oOutVecTwo;
+        flat out int oShaderId;
+
+        vec2 uvFromVertexID(int id) {
+	        switch(id){
+		        case 0: 
+			        return vec2(0.0, 0.0);
+			        break;
+		        case 1: 
+			        return vec2(0.0, 1.0);
+			        break;
+		        case 2: 
+			        return vec2(1.0, 0.0);
+			        break;
+		        case 3: 
+			        return vec2(0.0, 1.0);
+			        break;
+		        case 4: 
+			        return vec2(1.0, 1.0);
+			        break;
+		        case 5: 
+			        return vec2(1.0, 0.0);
+			        break;
+		        default:
+			        return vec2(1.0, 0.0);
+			        break;
+	        }
+        }
+
+        vec2 unpackHalfColor(float packedColor){
+	        int col = int(packedColor);
+	        float r  = float((col >> 8) & 255); // in RG it would be R
+	        float g = float(col & 255); // This would be B
+	        r /=255.0;
+	        g /=255.0;
+	        return vec2(r, g);
+        }
+
+        void main(){
+	        int vShaderId = int(vVecThree.y);
+	        switch(vShaderId){
+		        case 1:{ // Render Rect
+			        gl_Position = vec4(vVecOne.x, vVecOne.y, 0.0, 1.0);
+			        vec2 rg = unpackHalfColor(vVecOne.z);
+			        vec2 ba = unpackHalfColor(vVecTwo.x);
+			        oOutVec = vec4(rg.x, rg.y , ba.x, ba.y);
+			        break;
+			        }
+		        case 2: // Render Copy
+			        gl_Position = vec4(vVecOne.x, vVecOne.y,0.0 ,1.0);
+			        oOutVec = vec4(vVecOne.z,vVecTwo.xy, 0.0);
+			        break;
+		        case 3: // Render Copy Circle
+			        gl_Position = vec4(vVecOne.xy, 0.0, 1.0);
+			        oOutVec = vec4(vVecOne.z, vVecTwo); // Two .xy = texCord // z vecTwo = alpha //z VecOne = radius 
+			        break;
+		        case 4:{ // Render Circle
+                    gl_Position = vec4(vVecOne.xy, 0.0, 1.0);
+			        vec2 rg = unpackHalfColor(vVecTwo.x);
+			        vec2 ba = unpackHalfColor(vVecTwo.y);
+			        oOutVec.rg = rg;
+			        oOutVec.ba = ba;
+                    oOutVecTwo.xy = uvFromVertexID(gl_VertexID % 6);
+                    oOutVecTwo.z = vVecOne.z;
+			        break;
+			        }
+		        case 5:{ // RenderRoundedRectangle
+			        gl_Position = vec4(vVecOne.xy, 0.0, 1.0);
+			        vec2 rg = unpackHalfColor(vVecOne.z);
+			        vec2 ba = unpackHalfColor(vVecTwo.x);
+                    oOutVec.rg = rg;
+			        oOutVec.ba = ba;
+                    oOutVecTwo.xy = uvFromVertexID(gl_VertexID % 6);
+			        oOutVecTwo.zw = vVecTwo.yz;
+			        break;
+			        }
+		        case 6:  // RenderCopyRoundedRectangle
+			        gl_Position = vec4(vVecOne.xy, 0.0, 1.0);
+			        oOutVec.x = vVecOne.z;      // UV.x
+			        oOutVec.yz = vVecTwo.xy;    // UV.y, Alpha
+			        oOutVecTwo.x = vVecTwo.z;   // Width
+			        oOutVecTwo.y = vVecThree.x; // Height
+			        break;
+		        case 7:{ // Render Copy Filter
+	                gl_Position = vec4(vVecOne.xy, 0.0 ,1.0);
+			        oOutVec.x = vVecOne.z; // u
+			        oOutVec.y = vVecTwo.x; // v
+			        vec2 rg = unpackHalfColor(vVecTwo.y);
+			        oOutVec.z = rg.r; //r
+			        oOutVecTwo.x = rg.g; //g
+			        oOutVecTwo.y = vVecTwo.z; //b
+			        oOutVecTwo.z = vVecThree.x; //a
+			        break;
+		        }
+	        }
+	        oShaderId = vShaderId;
+        }
+
+        )glsl";
+
+        constexpr const char* fragmentStr = R"glsl(
+        #version 330 core
+
+        in vec4 oOutVec;
+        in vec4 oOutVecTwo;
+        flat in int oShaderId;
+
+        out vec4 FragColor;
+
+        uniform sampler2D texture1; // Only one texture slot used so uniform switch never nedded
+
+        float roundedBoxSDF(vec2 p, vec2 size, float r){
+            vec2 d = abs(p - size * 0.5) - (size * 0.5 - vec2(r));
+            return length(max(d, 0.0)) - r;
+        }
+
+        void main(){
+	        switch(oShaderId){
+		        case 1: // Render Rect
+			        FragColor = oOutVec;
+			        break;
+		        case 2:{ // Render Copy
+			        vec4 texcolor = texture(texture1,oOutVec.xy);
+	                texcolor.a *= oOutVec.z;
+	                FragColor = texcolor;
+			        break;
+                    }
+		        case 3:{ // Render Copy Circle
+		            vec2 center = vec2(0.5, 0.5);
+
+                    float dist = distance(oOutVec.yz, center);
+                    if (dist > oOutVec.x)
+                        discard;
+
+                    vec4 texColor = texture(texture1, oOutVec.yz);
+                    FragColor = vec4(texColor.rgb, texColor.a *  oOutVec.a);
+			        break;
+			        }
+		        case 4:{ // Render Circle
+                    vec2 center = vec2(0.5, 0.5);
+                    float dist = distance(oOutVecTwo.xy, center);
+                    if (dist > oOutVecTwo.z)
+                        discard;
+
+                    FragColor = oOutVec;
+			        break;
+			        }
+		        case 5:{ // Render Rounded Rectangle
+                    vec2 size = oOutVecTwo.zw; 
+                    vec2 pPx = oOutVecTwo.xy * size;
+                    float d = roundedBoxSDF(pPx, size, 8.0); // 8.0 is the size of a curve if nedded the change uniform is requied
+                    float alpha = 1.0 - smoothstep(0.0, 1.0, d);
+
+                    if (alpha <= 0.001) discard;
+
+                    FragColor = vec4(oOutVec.rgb, oOutVec.a * alpha);
+                    break;
+                    }
+
+		        case 6:{ // RenderCopyRoundedRectangle
+                    vec2 size = oOutVecTwo.xy; // Width, Height
+                    vec2 pPx = oOutVec.xy * size;
+                    float d = roundedBoxSDF(pPx, size, 8.0); // 8.0 is the size of a curve if nedded the change uniform is requied
+
+                    float alpha = 1.0 - smoothstep(0.0, 1.0, d);
+
+                    if (alpha <= 0.001) discard;
+            
+           	        vec4 texcolor = texture(texture1,oOutVec.xy);
+	                texcolor.a *= oOutVec.z;
+	                FragColor = texcolor;
+			        break;
+                    }
+		        case 7:{ // RenderCopy Filter
+	                vec4 texcolor = texture(texture1,oOutVec.xy);
+                    texcolor.r *= oOutVec.z; 
+                    texcolor.g *= oOutVecTwo.x; 
+                    texcolor.b *= oOutVecTwo.y; 
+	                texcolor.a *= oOutVecTwo.z; 
+	                FragColor = texcolor;
+			        break;
+                    }
+	        }
+        }
+        )glsl";
+
+        loader.CreateProgramStr("RenderUPR", vertexStr, fragmentStr);
+    }
 }
 
 void MT::Renderer::ClearFrame(const unsigned char R, const unsigned char G, const unsigned char B) {
@@ -522,7 +780,7 @@ void MT::Renderer::RenderRect(const Rect& rect, const Color& col, const int alph
         return;
     }
     if (currentProgram != renderRectId) {
-        RenderPresent(false);
+        Present(false);
         currentProgram = renderRectId;
         glUseProgram(renderRectId);
     }
@@ -552,69 +810,77 @@ void MT::Renderer::RenderRect(const Rect& rect, const Color& col, const int alph
     std::memcpy(globalVertices.data() + old, vertices, N * sizeof(float));
 }
 
-void MT::Renderer::RenderRectEX(const Rect& rect, const Color &col, const float rotation, const int alpha) {
+glm::vec2 RotateNdc(float localX, float localY, const glm::vec2& mainCenter, float cosA, float sinA, int w, int h) {
+    // Odwracamy lokalną oś Y (bo piksele rosną w dół)
+    localY = -localY;
+
+    // rotate local around origin then translate by center
+    float rx = localX * cosA - localY * sinA;
+    float ry = localX * sinA + localY * cosA;
+
+    float px = mainCenter.x + rx;
+    float py = mainCenter.y + ry;
+
+    // convert to NDC
+    float ndc_x = (px / float(w)) * 2.0f - 1.0f;
+    float ndc_y = 1.0f - (py / float(h)) * 2.0f;
+
+    return { ndc_x, ndc_y };
+}
+
+void MT::Renderer::RenderRectEX(const Rect& rect, const Color& col, const float rotation, const int alpha) {
     if (!vievPort.IsColliding(rect)) {
         return;
     }
 
     if (currentProgram != renderRectId) {
-        RenderPresent(false);
+        Present(false);
         currentProgram = renderRectId;
         glUseProgram(renderRectId);
     }
 
     currentSize = renderRectSize;
-    RectF temp;
+    float halfW = rect.w * 0.5f;
+    float halfH = rect.h * 0.5f;
 
-    float aspect = static_cast<float>(H) / static_cast<float>(W);
-    temp.x = (static_cast<float>(rect.x) / W) * 2.0f - 1.0f;
-    temp.y = 1.0f - (static_cast<float>(rect.y) / H) * 2.0f;
-    temp.w = (static_cast<float>(rect.w) / W) * 2.0f;
-    temp.h = (static_cast<float>(rect.h) / H) * 2.0f * aspect;
+    const float fR = float(col.R) / 255.0f;
+    const float fG = float(col.G) / 255.0f;
+    const float fB = float(col.B) / 255.0f;
+    const float fA = float(alpha) / 255.0f;
 
+    const float rad = glm::radians(rotation);
+    const float cosA = cosf(rad);
+    const float sinA = sinf(rad);
 
-    float halfW = temp.w / 2.0f;
-    float halfH = temp.h / 2.0f;
+    glm::vec2 centerPx = { rect.x + halfW, rect.y + halfH };
 
-    const float fR = float(col.R) / 255;
-    const float fG = float(col.G) / 255;
-    const float fB = float(col.B) / 255;
+    const glm::vec2 p0 = RotateNdc(-halfW, -halfH, centerPx, cosA, sinA, W, H);
+    const glm::vec2 p1 = RotateNdc(-halfW, halfH, centerPx, cosA, sinA, W, H);
+    const glm::vec2 p2 = RotateNdc(halfW, halfH, centerPx, cosA, sinA, W, H);
+    const glm::vec2 p3 = RotateNdc(-halfW, -halfH, centerPx, cosA, sinA, W, H);
+    const glm::vec2 p4 = RotateNdc(halfW, halfH, centerPx, cosA, sinA, W, H);
+    const glm::vec2 p5 = RotateNdc(halfW, -halfH, centerPx, cosA, sinA, W, H);
 
-    float rad = glm::radians(rotation);
-    float cosA = cosf(rad);
-    float sinA = sinf(rad);
-
-    glm::vec2 center = { temp.x + halfW, temp.y - halfH };
-
-    glm::vec2 p0 = RotateAndTranslate2D(-halfW, -halfH, center, cosA, sinA);
-    glm::vec2 p1 = RotateAndTranslate2D(-halfW, halfH, center, cosA, sinA);
-    glm::vec2 p2 = RotateAndTranslate2D(halfW, halfH, center, cosA, sinA);
-    glm::vec2 p3 = RotateAndTranslate2D(-halfW, -halfH, center, cosA, sinA);
-    glm::vec2 p4 = RotateAndTranslate2D(halfW, halfH, center, cosA, sinA);
-    glm::vec2 p5 = RotateAndTranslate2D(halfW, -halfH, center, cosA, sinA);
-
-    float floatAlpha = float(alpha) / 255;
-
-    const float vertex[] = {
-        p0.x, p0.y, fR, fG, fB, floatAlpha,
-        p1.x, p1.y, fR, fG, fB, floatAlpha,
-        p2.x, p2.y, fR, fG, fB, floatAlpha,
-        p3.x, p3.y, fR, fG, fB, floatAlpha,
-        p4.x, p4.y, fR, fG, fB, floatAlpha,
-        p5.x, p5.y, fR, fG, fB, floatAlpha,
+    const float vertices[] = {
+        p0.x, p0.y, fR, fG, fB, fA,
+        p1.x, p1.y, fR, fG, fB, fA,
+        p2.x, p2.y, fR, fG, fB, fA,
+        p3.x, p3.y, fR, fG, fB, fA,
+        p4.x, p4.y, fR, fG, fB, fA,
+        p5.x, p5.y, fR, fG, fB, fA
     };
     constexpr int N = 36;
     const size_t old = globalVertices.size();
     globalVertices.resize(old + N);
-    std::memcpy(globalVertices.data() + old, vertex, N * sizeof(float));
+    std::memcpy(globalVertices.data() + old, vertices, N * sizeof(float));
 }
 
 
-void MT::Renderer::DrawLine(const int x1, const int y1, const int x2, const int y2,const int thickness,
+void MT::Renderer::DrawLine(const int x1, const int y1, const int x2, const int y2, const int thickness,
     const Color& col, const unsigned char alpha) {
 
     if (currentProgram != renderRectId) {
-        RenderPresent(false);
+        Present(false);
         currentProgram = renderRectId;
         glUseProgram(renderRectId);
     }
@@ -662,7 +928,7 @@ void MT::Renderer::DrawLine(const int x1, const int y1, const int x2, const int 
 }
 
 
-void MT::Renderer::RenderCopy(const Rect& rect, const Texture* texture){
+void MT::Renderer::RenderCopyAS(const Rect& rect, const Texture* texture) {
     if (!texture) { return; }
     if (!vievPort.IsColliding(rect)) {
         return;
@@ -673,17 +939,56 @@ void MT::Renderer::RenderCopy(const Rect& rect, const Texture* texture){
     const float h = (rect.h / static_cast<float>(H)) * 2.0f;
 
     if (currentTexture != texture->texture) {
-        RenderPresent(false);
+        Present(false);
         glBindTexture(GL_TEXTURE_2D, texture->texture);
         currentTexture = texture->texture;
     }
-    
+
+    if (currentProgram != renderBaseId) {
+        Present(false);
+        currentProgram = renderBaseId;
+        glUseProgram(currentProgram);
+    }
+    currentSize = renderCopyBaseSize;
+
+    //    // pos.x, pos.y tex.u, tex.v
+    const float verticles[] = {
+        x,     y - h ,texture->alpha,
+        x,     y     ,texture->alpha,
+        x + w, y - h ,texture->alpha,
+        x,     y     ,texture->alpha,
+        x + w, y     ,texture->alpha,
+        x + w, y - h ,texture->alpha
+    };
+
+    constexpr int N = 18;
+    const size_t old = globalVertices.size();
+    globalVertices.resize(old + N);
+    std::memcpy(globalVertices.data() + old, verticles, N * sizeof(float));
+}
+
+void MT::Renderer::RenderCopy(const Rect& rect, const Texture* texture) {
+    if (!texture) { return; }
+    if (!vievPort.IsColliding(rect)) {
+        return;
+    }
+    const float x = (rect.x / static_cast<float>(W)) * 2.0f - 1.0f;
+    const float y = 1.0f - (rect.y / static_cast<float>(H)) * 2.0f;
+    const float w = (rect.w / static_cast<float>(W)) * 2.0f;
+    const float h = (rect.h / static_cast<float>(H)) * 2.0f;
+
+    if (currentTexture != texture->texture) {
+        Present(false);
+        glBindTexture(GL_TEXTURE_2D, texture->texture);
+        currentTexture = texture->texture;
+    }
+
     if (currentProgram != renderCopyId) {
-        RenderPresent(false);
+        Present(false);
         currentProgram = renderCopyId;
         glUseProgram(renderCopyId);
     }
-    currentSize = renderCopySize; 
+    currentSize = renderCopySize;
 
     //    // pos.x, pos.y tex.u, tex.v
     const float verticles[] = {
@@ -701,7 +1006,7 @@ void MT::Renderer::RenderCopy(const Rect& rect, const Texture* texture){
     std::memcpy(globalVertices.data() + old, verticles, N * sizeof(float));
 }
 
-void MT::Renderer::RenderCopyPart(const Rect& rect, const Rect& source, const Texture *texture) {
+void MT::Renderer::RenderCopyPart(const Rect& rect, const Rect& source, const Texture* texture) {
     if (!texture) { return; }
     if (!vievPort.IsColliding(rect)) {
         return;
@@ -713,13 +1018,13 @@ void MT::Renderer::RenderCopyPart(const Rect& rect, const Rect& source, const Te
 
 
     if (currentTexture != texture->texture) {
-        RenderPresent(false); 
+        Present(false);
         glBindTexture(GL_TEXTURE_2D, texture->texture);
         currentTexture = texture->texture;
     }
 
     if (currentProgram != renderCopyId) {
-        RenderPresent(false);
+        Present(false);
         currentProgram = renderCopyId;
         glUseProgram(renderCopyId);
     }
@@ -756,39 +1061,33 @@ void MT::Renderer::RenderCopyPart(const Rect& rect, const Rect& source, const Te
 void MT::Renderer::RenderCopyEX(const Rect& rect, const Texture* texture, const bool flip, const float rotation) {
     if (!texture) { return; }
     if (currentTexture != texture->texture) {
-        RenderPresent(false);
+        Present(false);
         glBindTexture(GL_TEXTURE_2D, texture->texture);
         currentTexture = texture->texture;
     }
 
     if (currentProgram != renderCopyId) {
-        RenderPresent(false);
+        Present(false);
         currentProgram = renderCopyId;
         glUseProgram(renderCopyId);
     }
     currentSize = renderCopySize;
 
-    float aspect = static_cast<float>(H) / static_cast<float>(W);
-    float x = (static_cast<float>(rect.x) / W) * 2.0f - 1.0f;
-    float y = 1.0f - (static_cast<float>(rect.y) / H) * 2.0f;
-    float w = (static_cast<float>(rect.w) / W) * 2.0f;
-    float h = (static_cast<float>(rect.h) / H) * 2.0f * aspect;
+    float halfW = rect.w * 0.5f;
+    float halfH = rect.h * 0.5f;
 
-    float halfW = w / 2.0f;
-    float halfH = h / 2.0f;
+    const float rad = glm::radians(rotation);
+    const float cosA = cosf(rad);
+    const float sinA = sinf(rad);
 
-    float rad = glm::radians(rotation);
-    float cosA = cosf(rad);
-    float sinA = sinf(rad);
+    glm::vec2 centerPx = { rect.x + halfW, rect.y + halfH };
 
-    glm::vec2 center = { x + halfW, y - halfH };
-
-    glm::vec2 p0 = RotateAndTranslate2D(-halfW, -halfH, center, cosA, sinA);
-    glm::vec2 p1 = RotateAndTranslate2D(-halfW, halfH, center, cosA, sinA);
-    glm::vec2 p2 = RotateAndTranslate2D(halfW, halfH, center, cosA, sinA);
-    glm::vec2 p3 = RotateAndTranslate2D(-halfW, -halfH, center, cosA, sinA);
-    glm::vec2 p4 = RotateAndTranslate2D(halfW, halfH, center, cosA, sinA);
-    glm::vec2 p5 = RotateAndTranslate2D(halfW, -halfH, center, cosA, sinA);
+    const glm::vec2 p0 = RotateNdc(-halfW, -halfH, centerPx, cosA, sinA, W, H);
+    const glm::vec2 p1 = RotateNdc(-halfW, halfH, centerPx, cosA, sinA, W, H);
+    const glm::vec2 p2 = RotateNdc(halfW, halfH, centerPx, cosA, sinA, W, H);
+    const glm::vec2 p3 = RotateNdc(-halfW, -halfH, centerPx, cosA, sinA, W, H);
+    const glm::vec2 p4 = RotateNdc(halfW, halfH, centerPx, cosA, sinA, W, H);
+    const glm::vec2 p5 = RotateNdc(halfW, -halfH, centerPx, cosA, sinA, W, H);
 
     if (flip) {
         const float vertex[] = {
@@ -823,26 +1122,34 @@ void MT::Renderer::RenderCopyEX(const Rect& rect, const Texture* texture, const 
 void MT::Renderer::RenderCopyPartEX(const Rect& rect, const Rect& source, const Texture* texture, const bool flip, const float rotation) {
     if (!texture) { return; }
     if (currentTexture != texture->texture) {
-        RenderPresent(false);
+        Present(false);
         glBindTexture(GL_TEXTURE_2D, texture->texture);
         currentTexture = texture->texture;
     }
 
     if (currentProgram != renderCopyId) {
-        RenderPresent(false);
+        Present(false);
         currentProgram = renderCopyId;
         glUseProgram(renderCopyId);
     }
     currentSize = renderCopySize;
 
-    float aspect = static_cast<float>(H) / static_cast<float>(W);
-    const float x = (static_cast<float>(rect.x) / W) * 2.0f - 1.0f;
-    const float y = 1.0f - (static_cast<float>(rect.y) / H) * 2.0f;
-    const float w = (static_cast<float>(rect.w) / W) * 2.0f;
-    const float h = (static_cast<float>(rect.h) / H) * 2.0f *aspect;
 
-    float halfW = w / 2.0f;
-    float halfH = h / 2.0f;
+    float halfW = rect.w * 0.5f;
+    float halfH = rect.h * 0.5f;
+
+    const float rad = glm::radians(rotation);
+    const float cosA = cosf(rad);
+    const float sinA = sinf(rad);
+
+    glm::vec2 centerPx = { rect.x + halfW, rect.y + halfH };
+
+    const glm::vec2 p0 = RotateNdc(-halfW, -halfH, centerPx, cosA, sinA, W, H);
+    const glm::vec2 p1 = RotateNdc(-halfW, halfH, centerPx, cosA, sinA, W, H);
+    const glm::vec2 p2 = RotateNdc(halfW, halfH, centerPx, cosA, sinA, W, H);
+    const glm::vec2 p3 = RotateNdc(-halfW, -halfH, centerPx, cosA, sinA, W, H);
+    const glm::vec2 p4 = RotateNdc(halfW, halfH, centerPx, cosA, sinA, W, H);
+    const glm::vec2 p5 = RotateNdc(halfW, -halfH, centerPx, cosA, sinA, W, H);
 
     const float texW = static_cast<float>(texture->w);
     const float texH = static_cast<float>(texture->h);
@@ -854,19 +1161,6 @@ void MT::Renderer::RenderCopyPartEX(const Rect& rect, const Rect& source, const 
     const float v1 = 1.0f - static_cast<float>(source.y) / texH;
     const float v0 = v1 - static_cast<float>(source.h) / texH;
 
-
-    float rad = glm::radians(rotation);
-    float cosA = cosf(rad);
-    float sinA = sinf(rad);
-
-    glm::vec2 center = { x + halfW, y - halfH };
-
-    glm::vec2 p0 = RotateAndTranslate2D(-halfW, -halfH, center, cosA, sinA);
-    glm::vec2 p1 = RotateAndTranslate2D(-halfW, halfH, center, cosA, sinA);
-    glm::vec2 p2 = RotateAndTranslate2D(halfW, halfH, center, cosA, sinA);
-    glm::vec2 p3 = RotateAndTranslate2D(-halfW, -halfH, center, cosA, sinA);
-    glm::vec2 p4 = RotateAndTranslate2D(halfW, halfH, center, cosA, sinA);
-    glm::vec2 p5 = RotateAndTranslate2D(halfW, -halfH, center, cosA, sinA);
 
     if (flip) {
         const float vertex[] = {
@@ -899,7 +1193,6 @@ void MT::Renderer::RenderCopyPartEX(const Rect& rect, const Rect& source, const 
     }
 }
 
-
 void MT::Renderer::RenderCopyCircle(const Rect& rect, const Texture* texture, const float radius) {
     if (!texture) { return; }
     if (!vievPort.IsColliding(rect)) {
@@ -911,13 +1204,13 @@ void MT::Renderer::RenderCopyCircle(const Rect& rect, const Texture* texture, co
     const float h = (rect.h / static_cast<float>(H)) * 2.0f;
 
     if (currentTexture != texture->texture) {
-        RenderPresent(false);
+        Present(false);
         glBindTexture(GL_TEXTURE_2D, texture->texture);
         currentTexture = texture->texture;
     }
 
     if (currentProgram != renderCopyCircleId) {
-        RenderPresent(false);
+        Present(false);
         currentProgram = renderCopyCircleId;
         glUseProgram(renderCopyCircleId);
     }
@@ -944,7 +1237,7 @@ void MT::Renderer::RenderCircle(const Rect& rect, const Color& col, const unsign
         return;
     }
     if (currentProgram != renderCircleId) {
-        RenderPresent(false);
+        Present(false);
         currentProgram = renderCircleId;
         glUseProgram(renderCircleId);
     }
@@ -982,7 +1275,7 @@ void MT::Renderer::RenderRoundedRect(const Rect& rect, const Color& col, const u
         return;
     }
     if (currentProgram != renderRoundedRectId) {
-        RenderPresent(false);
+        Present(false);
         currentProgram = renderRoundedRectId;
         glUseProgram(currentProgram);
     }
@@ -990,12 +1283,12 @@ void MT::Renderer::RenderRoundedRect(const Rect& rect, const Color& col, const u
     glm::vec2 rectPixelSize = { (float)rect.w,(float)rect.h };
 
     if (roundRectRadiusVal != rectPixelSize) {
-        RenderPresent(false);
+        Present(false);
         roundRectRadiusVal = rectPixelSize;
         glUniform2f(roundRectRadius, rectPixelSize.x, rectPixelSize.y);
     }
 
-    currentSize = renderRoundedSize; 
+    currentSize = renderRoundedSize;
     const float x = (static_cast<float>(rect.x) / W) * 2.0f - 1.0f;
     const float y = 1.0f - (static_cast<float>(rect.y) / H) * 2.0f;
     const float w = (static_cast<float>(rect.w) / W) * 2.0f;
@@ -1028,12 +1321,12 @@ void MT::Renderer::RenderCopyRoundedRect(const MT::Rect& rect, const MT::Texture
         return;
     }
     if (currentProgram != renderCopyRoundedRectId) {
-        RenderPresent(false);
+        Present(false);
         currentProgram = renderCopyRoundedRectId;
         glUseProgram(currentProgram);
     }
     if (currentTexture != texture->texture) {
-        RenderPresent(false);
+        Present(false);
         glBindTexture(GL_TEXTURE_2D, texture->texture);
         currentTexture = texture->texture;
     }
@@ -1041,7 +1334,7 @@ void MT::Renderer::RenderCopyRoundedRect(const MT::Rect& rect, const MT::Texture
     glm::vec2 rectPixelSize = { (float)rect.w,(float)rect.h };
 
     if (roundRectCopyRadiusVal != rectPixelSize) {
-        RenderPresent(false);
+        Present(false);
         roundRectCopyRadiusVal = rectPixelSize;
         glUniform2f(roundRectCopyRadius, rectPixelSize.x, rectPixelSize.y);
     }
@@ -1081,13 +1374,13 @@ void MT::Renderer::RenderCopyFiltered(const Rect& rect, const Texture* texture, 
 
     // aktywacja tekstury
     if (currentTexture != texture->texture) {
-        RenderPresent(false);
+        Present(false);
         glBindTexture(GL_TEXTURE_2D, texture->texture);
         currentTexture = texture->texture;
     }
 
     if (currentProgram != renderCopyFilterId) {
-        RenderPresent(false);  
+        Present(false);
         currentProgram = renderCopyFilterId;
         glUseProgram(renderCopyFilterId);
     }
@@ -1123,13 +1416,13 @@ void MT::Renderer::RenderCopyPartFiltered(const Rect& rect, const Rect& source, 
 
 
     if (currentTexture != texture->texture) {
-        RenderPresent(false);  
+        Present(false);
         glBindTexture(GL_TEXTURE_2D, texture->texture);
         currentTexture = texture->texture;
     }
 
     if (currentProgram != renderCopyFilterId) {
-        RenderPresent(false);
+        Present(false);
         currentProgram = renderCopyFilterId;
         glUseProgram(renderCopyFilterId);
     }
@@ -1163,18 +1456,578 @@ void MT::Renderer::RenderCopyPartFiltered(const Rect& rect, const Rect& source, 
     std::memcpy(globalVertices.data() + old, vertex, N * sizeof(float));
 }
 
+void MT::Renderer::RenderRectUPR(const Rect& rect, const Color& col, const int alpha) {
+    if (!vievPort.IsColliding(rect)) { return; }
+
+    if (currentProgram != uprId) {
+        Present(false);
+        currentProgram = uprId;
+        glUseProgram(currentProgram);
+    }
+    currentSize = renderUPRSize;
+    const float x = (static_cast<float>(rect.x) / W) * 2.0f - 1.0f;
+    const float y = 1.0f - (static_cast<float>(rect.y) / H) * 2.0f;
+    const float w = (static_cast<float>(rect.w) / W) * 2.0f;
+    const float h = (static_cast<float>(rect.h) / H) * 2.0f;
+
+    uint16_t iRG = col.R;
+    iRG <<= 8;
+    iRG += col.G;
+    uint16_t iBA = col.B;
+    iBA <<= 8;
+    iBA += alpha;
+    const float fRG = iRG;
+    const float fBA = iBA;
+
+    // pos.x, pos.y, col.r, col.g, col.b col.a trashVal1 trashVal2 shaderID
+    const float vertices[] = {
+        x,     y - h, fRG, fBA, 0.0f, 0.0f, 0.0f, 1.0f,
+        x,     y,     fRG, fBA, 0.0f, 0.0f, 0.0f, 1.0f,
+        x + w, y - h, fRG, fBA, 0.0f, 0.0f, 0.0f, 1.0f,
+        x,     y,     fRG, fBA, 0.0f, 0.0f, 0.0f, 1.0f,
+        x + w, y,     fRG, fBA, 0.0f, 0.0f, 0.0f, 1.0f,
+        x + w, y - h, fRG, fBA, 0.0f, 0.0f, 0.0f, 1.0f,
+    };
+
+    constexpr int N = 48;
+    const size_t old = globalVertices.size();
+    globalVertices.resize(old + N);
+    std::memcpy(globalVertices.data() + old, vertices, N * sizeof(float));
+}
+
+void MT::Renderer::RenderRectEXUPR(const Rect& rect, const Color& col, const float rotation, const int alpha) {
+    if (!vievPort.IsColliding(rect)) { return; }
+
+    if (currentProgram != uprId) {
+        Present(false);
+        currentProgram = uprId;
+        glUseProgram(currentProgram);
+    }
+
+    currentSize = renderUPRSize;
+    const float halfW = rect.w * 0.5f;
+    const float halfH = rect.h * 0.5f;
+
+    uint16_t iRG = col.R;
+    iRG <<= 8;
+    iRG += col.G;
+    uint16_t iBA = col.B;
+    iBA <<= 8;
+    iBA += alpha;
+    const float fRG = iRG;
+    const float fBA = iBA;
+
+    const float rad = glm::radians(rotation);
+    const float cosA = cosf(rad);
+    const float sinA = sinf(rad);
+
+    const glm::vec2 centerPx = { rect.x + halfW, rect.y + halfH };
+
+    const glm::vec2 p0 = RotateNdc(-halfW, -halfH, centerPx, cosA, sinA, W, H);
+    const glm::vec2 p1 = RotateNdc(-halfW, halfH, centerPx, cosA, sinA, W, H);
+    const glm::vec2 p2 = RotateNdc(halfW, halfH, centerPx, cosA, sinA, W, H);
+    const glm::vec2 p3 = RotateNdc(-halfW, -halfH, centerPx, cosA, sinA, W, H);
+    const glm::vec2 p4 = RotateNdc(halfW, halfH, centerPx, cosA, sinA, W, H);
+    const glm::vec2 p5 = RotateNdc(halfW, -halfH, centerPx, cosA, sinA, W, H);
+
+    const float vertices[] = {
+        p0.x, p0.y, fRG, fBA, 0.0f, 0.0f, 0.0f, 1.0f,
+        p1.x, p1.y, fRG, fBA, 0.0f, 0.0f, 0.0f, 1.0f,
+        p2.x, p2.y, fRG, fBA, 0.0f, 0.0f, 0.0f, 1.0f,
+        p3.x, p3.y, fRG, fBA, 0.0f, 0.0f, 0.0f, 1.0f,
+        p4.x, p4.y, fRG, fBA, 0.0f, 0.0f, 0.0f, 1.0f,
+        p5.x, p5.y, fRG, fBA, 0.0f, 0.0f, 0.0f, 1.0f,
+    };
+    constexpr int N = 48;
+    const size_t old = globalVertices.size();
+    globalVertices.resize(old + N);
+    std::memcpy(globalVertices.data() + old, vertices, N * sizeof(float));
+}
+
+void MT::Renderer::RenderCopyUPR(const Rect& rect, const Texture* texture) {
+    if (!texture) { return; }
+    if (!vievPort.IsColliding(rect)) { return; }
+
+    const float x = (rect.x / static_cast<float>(W)) * 2.0f - 1.0f;
+    const float y = 1.0f - (rect.y / static_cast<float>(H)) * 2.0f;
+    const float w = (rect.w / static_cast<float>(W)) * 2.0f;
+    const float h = (rect.h / static_cast<float>(H)) * 2.0f;
+
+    if (currentTexture != texture->texture) {
+        Present(false);
+        glBindTexture(GL_TEXTURE_2D, texture->texture);
+        currentTexture = texture->texture;
+    }
+
+    if (currentProgram != uprId) {
+        Present(false);
+        currentProgram = uprId;
+        glUseProgram(currentProgram);
+    }
+    currentSize = renderUPRSize;
+
+    //    // pos.x, pos.y tex.u, tex.v
+    const float verticles[] = {
+        x,     y - h, 0.0f, 0.0f,texture->alpha, 0.0f, 0.0f, 2.0f,
+        x,     y,     0.0f, 1.0f,texture->alpha, 0.0f, 0.0f, 2.0f,
+        x + w, y - h, 1.0f, 0.0f,texture->alpha, 0.0f, 0.0f, 2.0f,
+        x,     y,     0.0f, 1.0f,texture->alpha, 0.0f, 0.0f, 2.0f,
+        x + w, y,     1.0f, 1.0f,texture->alpha, 0.0f, 0.0f, 2.0f,
+        x + w, y - h, 1.0f, 0.0f,texture->alpha, 0.0f, 0.0f, 2.0f
+    };
+
+    constexpr int N = 48;
+    const size_t old = globalVertices.size();
+    globalVertices.resize(old + N);
+    std::memcpy(globalVertices.data() + old, verticles, N * sizeof(float));
+}
+
+void MT::Renderer::RenderCopyPartUPR(const Rect& rect, const Rect& source, const Texture* texture) {
+    if (!texture) { return; }
+    if (!vievPort.IsColliding(rect)) {
+        return;
+    }
+    const float x = (static_cast<float>(rect.x) / W) * 2.0f - 1.0f;
+    const float y = 1.0f - (static_cast<float>(rect.y) / H) * 2.0f;
+    const float w = (static_cast<float>(rect.w) / W) * 2.0f;
+    const float h = (static_cast<float>(rect.h) / H) * 2.0f;
 
 
-void MT::Renderer::RenderPresent(bool switchContext) {
+    if (currentTexture != texture->texture) {
+        Present(false);
+        glBindTexture(GL_TEXTURE_2D, texture->texture);
+        currentTexture = texture->texture;
+    }
+
+    if (currentProgram != uprId) {
+        Present(false);
+        currentProgram = uprId;
+        glUseProgram(currentProgram);
+    }
+    currentSize = renderUPRSize;
+
+    RectF tempSource;
+
+    tempSource.x = static_cast<float>(source.x) / texture->w;
+    tempSource.y = static_cast<float>(source.y) / texture->h;
+    tempSource.w = static_cast<float>(source.w) / texture->w;
+    tempSource.h = static_cast<float>(source.h) / texture->h;
+
+    float u0 = tempSource.x;
+    float u1 = tempSource.x + tempSource.w;
+    float v1 = 1.0f - tempSource.y;
+    float v0 = v1 - tempSource.h;
+
+
+    // pos.x pos.y tex.u, tex.v
+    float verticles[] = {
+        x,     y - h, u0, v0,texture->alpha, 0.0f, 0.0f, 2.0f,
+        x,     y,     u0, v1,texture->alpha, 0.0f, 0.0f, 2.0f,
+        x + w, y - h, u1, v0,texture->alpha, 0.0f, 0.0f, 2.0f,
+        x,     y,     u0, v1,texture->alpha, 0.0f, 0.0f, 2.0f,
+        x + w, y,     u1, v1,texture->alpha, 0.0f, 0.0f, 2.0f,
+        x + w, y - h, u1, v0,texture->alpha, 0.0f, 0.0f, 2.0f
+    };
+    constexpr int N = 48;
+    const size_t old = globalVertices.size();
+    globalVertices.resize(old + N);
+    std::memcpy(globalVertices.data() + old, verticles, N * sizeof(float));
+}
+
+void MT::Renderer::RenderCopyEXUPR(const Rect& rect, const Texture* texture, const bool flip, const float rotation) {
+    if (!texture) { return; }
+    if (currentTexture != texture->texture) {
+        Present(false);
+        glBindTexture(GL_TEXTURE_2D, texture->texture);
+        currentTexture = texture->texture;
+    }
+
+    if (currentProgram != uprId) {
+        Present(false);
+        currentProgram = uprId;
+        glUseProgram(currentProgram);
+    }
+    currentSize = renderUPRSize;
+
+    float halfW = rect.w * 0.5f;
+    float halfH = rect.h * 0.5f;
+
+    const float rad = glm::radians(rotation);
+    const float cosA = cosf(rad);
+    const float sinA = sinf(rad);
+
+    glm::vec2 centerPx = { rect.x + halfW, rect.y + halfH };
+
+    const glm::vec2 p0 = RotateNdc(-halfW, -halfH, centerPx, cosA, sinA, W, H);
+    const glm::vec2 p1 = RotateNdc(-halfW, halfH, centerPx, cosA, sinA, W, H);
+    const glm::vec2 p2 = RotateNdc(halfW, halfH, centerPx, cosA, sinA, W, H);
+    const glm::vec2 p3 = RotateNdc(-halfW, -halfH, centerPx, cosA, sinA, W, H);
+    const glm::vec2 p4 = RotateNdc(halfW, halfH, centerPx, cosA, sinA, W, H);
+    const glm::vec2 p5 = RotateNdc(halfW, -halfH, centerPx, cosA, sinA, W, H);
+
+    constexpr int N = 48;
+    const size_t old = globalVertices.size();
+    globalVertices.resize(old + N);
+    if (flip) {
+        const float vertex[] = {
+            p0.x, p0.y, 1.0f, 0.0f, texture->alpha, 0.0f, 0.0f, 2.0f,
+            p1.x, p1.y, 1.0f, 1.0f, texture->alpha, 0.0f, 0.0f, 2.0f,
+            p2.x, p2.y, 0.0f, 1.0f, texture->alpha, 0.0f, 0.0f, 2.0f,
+            p3.x, p3.y, 1.0f, 0.0f, texture->alpha, 0.0f, 0.0f, 2.0f,
+            p4.x, p4.y, 0.0f, 1.0f, texture->alpha, 0.0f, 0.0f, 2.0f,
+            p5.x, p5.y, 0.0f, 0.0f, texture->alpha, 0.0f, 0.0f, 2.0f
+        };
+        std::memcpy(globalVertices.data() + old, vertex, N * sizeof(float));
+    }
+    else {
+        const float vertex[] = {
+            p0.x, p0.y, 0.0f, 0.0f,texture->alpha, 0.0f, 0.0f, 2.0f,
+            p1.x, p1.y, 0.0f, 1.0f,texture->alpha, 0.0f, 0.0f, 2.0f,
+            p2.x, p2.y, 1.0f, 1.0f,texture->alpha, 0.0f, 0.0f, 2.0f,
+            p3.x, p3.y, 0.0f, 0.0f,texture->alpha, 0.0f, 0.0f, 2.0f,
+            p4.x, p4.y, 1.0f, 1.0f,texture->alpha, 0.0f, 0.0f, 2.0f,
+            p5.x, p5.y, 1.0f, 0.0f,texture->alpha, 0.0f, 0.0f, 2.0f
+        };
+        std::memcpy(globalVertices.data() + old, vertex, N * sizeof(float));
+    }
+}
+
+void MT::Renderer::RenderCopyPartEXUPR(const Rect& rect, const Rect& source, const Texture* texture, const bool flip, const float rotation) {
+    if (!texture) { return; }
+    if (currentTexture != texture->texture) {
+        Present(false);
+        glBindTexture(GL_TEXTURE_2D, texture->texture);
+        currentTexture = texture->texture;
+    }
+
+    if (currentProgram != uprId) {
+        Present(false);
+        currentProgram = uprId;
+        glUseProgram(currentProgram);
+    }
+    currentSize = renderUPRSize;
+
+
+    float halfW = rect.w * 0.5f;
+    float halfH = rect.h * 0.5f;
+
+    const float rad = glm::radians(rotation);
+    const float cosA = cosf(rad);
+    const float sinA = sinf(rad);
+
+    glm::vec2 centerPx = { rect.x + halfW, rect.y + halfH };
+
+    const glm::vec2 p0 = RotateNdc(-halfW, -halfH, centerPx, cosA, sinA, W, H);
+    const glm::vec2 p1 = RotateNdc(-halfW, halfH, centerPx, cosA, sinA, W, H);
+    const glm::vec2 p2 = RotateNdc(halfW, halfH, centerPx, cosA, sinA, W, H);
+    const glm::vec2 p3 = RotateNdc(-halfW, -halfH, centerPx, cosA, sinA, W, H);
+    const glm::vec2 p4 = RotateNdc(halfW, halfH, centerPx, cosA, sinA, W, H);
+    const glm::vec2 p5 = RotateNdc(halfW, -halfH, centerPx, cosA, sinA, W, H);
+
+    const float texW = static_cast<float>(texture->w);
+    const float texH = static_cast<float>(texture->h);
+
+
+    const float u0 = static_cast<float>(source.x) / texW;
+    const float u1 = static_cast<float>(source.x + source.w) / texW;
+
+    const float v1 = 1.0f - static_cast<float>(source.y) / texH;
+    const float v0 = v1 - static_cast<float>(source.h) / texH;
+
+    constexpr int N = 48;
+    const size_t old = globalVertices.size();
+    globalVertices.resize(old + N);
+    if (flip) {
+        const float vertex[] = {
+            p0.x, p0.y, u1, v0,texture->alpha, 0.0f, 0.0f, 2.0f,
+            p1.x, p1.y, u1, v1,texture->alpha, 0.0f, 0.0f, 2.0f,
+            p2.x, p2.y, u0, v1,texture->alpha, 0.0f, 0.0f, 2.0f,
+            p3.x, p3.y, u1, v0,texture->alpha, 0.0f, 0.0f, 2.0f,
+            p4.x, p4.y, u0, v1,texture->alpha, 0.0f, 0.0f, 2.0f,
+            p5.x, p5.y, u0, v0,texture->alpha, 0.0f, 0.0f, 2.0f
+        };
+        std::memcpy(globalVertices.data() + old, vertex, N * sizeof(float));
+    }
+    else {
+        const float vertex[] = {
+            p0.x, p0.y, u0, v0,texture->alpha, 0.0f, 0.0f, 2.0f,
+            p1.x, p1.y, u0, v1,texture->alpha, 0.0f, 0.0f, 2.0f,
+            p2.x, p2.y, u1, v1,texture->alpha, 0.0f, 0.0f, 2.0f,
+            p3.x, p3.y, u0, v0,texture->alpha, 0.0f, 0.0f, 2.0f,
+            p4.x, p4.y, u1, v1,texture->alpha, 0.0f, 0.0f, 2.0f,
+            p5.x, p5.y, u1, v0,texture->alpha, 0.0f, 0.0f, 2.0f
+        };
+        std::memcpy(globalVertices.data() + old, vertex, N * sizeof(float));
+    }
+}
+
+void MT::Renderer::RenderCopyCircleUPR(const Rect& rect, const Texture* texture, const float radius) {
+    if (!texture) { return; }
+    if (!vievPort.IsColliding(rect)) { return; }
+
+    const float x = (rect.x / static_cast<float>(W)) * 2.0f - 1.0f;
+    const float y = 1.0f - (rect.y / static_cast<float>(H)) * 2.0f;
+    const float w = (rect.w / static_cast<float>(W)) * 2.0f;
+    const float h = (rect.h / static_cast<float>(H)) * 2.0f;
+
+    if (currentTexture != texture->texture) {
+        Present(false);
+        glBindTexture(GL_TEXTURE_2D, texture->texture);
+        currentTexture = texture->texture;
+    }
+
+    if (currentProgram != uprId) {
+        Present(false);
+        currentProgram = uprId;
+        glUseProgram(currentProgram);
+    }
+    currentSize = renderUPRSize;
+
+    // pos.x, pos.y,radius tex.u, tex.v, alpha
+    float vertex[] = {
+        x,     y - h,radius, 0.0f, 0.0f, texture->alpha, 0.0f, 3.0f,
+        x,     y,    radius, 0.0f, 1.0f, texture->alpha, 0.0f, 3.0f,
+        x + w, y - h,radius, 1.0f, 0.0f, texture->alpha, 0.0f, 3.0f,
+        x,     y,    radius, 0.0f, 1.0f, texture->alpha, 0.0f, 3.0f,
+        x + w, y,    radius, 1.0f, 1.0f, texture->alpha, 0.0f, 3.0f,
+        x + w, y - h,radius, 1.0f, 0.0f, texture->alpha, 0.0f, 3.0f
+    };
+
+    constexpr int N = 48;
+    const size_t old = globalVertices.size();
+    globalVertices.resize(old + N);
+    std::memcpy(globalVertices.data() + old, vertex, N * sizeof(float));
+}
+
+void MT::Renderer::RenderCircleUPR(const Rect& rect, const Color& col, const unsigned char alpha, const float radius) {
+    if (!vievPort.IsColliding(rect)) { return; }
+    if (currentProgram != uprId) {
+        Present(false);
+        currentProgram = uprId;
+        glUseProgram(currentProgram);
+    }
+    currentSize = renderUPRSize;
+
+    const float x = (static_cast<float>(rect.x) / W) * 2.0f - 1.0f;
+    const float y = 1.0f - (static_cast<float>(rect.y) / H) * 2.0f;
+    const float w = (static_cast<float>(rect.w) / W) * 2.0f;
+    const float h = (static_cast<float>(rect.h) / H) * 2.0f;
+
+    uint16_t iRG = col.R;
+    iRG <<= 8;
+    iRG += col.G;
+    uint16_t iBA = col.B;
+    iBA <<= 8;
+    iBA += alpha;
+    const float fRG = iRG;
+    const float fBA = iBA;
+
+
+    // pos.x, pos.y, pos.z,radius  col.r, col.g, col.b col.a
+    const float vertex[] = {
+        x,     y - h, radius, fRG, fBA, 0.0f, 0.0f, 4.0f,
+        x,     y    , radius, fRG, fBA, 0.0f, 0.0f, 4.0f,
+        x + w, y - h, radius, fRG, fBA, 0.0f, 0.0f, 4.0f,
+        x,     y    , radius, fRG, fBA, 0.0f, 0.0f, 4.0f,
+        x + w, y    , radius, fRG, fBA, 0.0f, 0.0f, 4.0f,
+        x + w, y - h, radius, fRG, fBA, 0.0f, 0.0f, 4.0f
+    };
+
+    constexpr int N = 48;
+    const size_t old = globalVertices.size();
+    globalVertices.resize(old + N);
+    std::memcpy(globalVertices.data() + old, vertex, N * sizeof(float));
+}
+
+void MT::Renderer::RenderRoundedRectUPR(const Rect& rect, const Color& col, const unsigned char alpha) {
+    if (!vievPort.IsColliding(rect)) { return; }
+
+    const glm::vec2 rectPixelSize = { (float)rect.w,(float)rect.h };
+
+    if (currentProgram != uprId) {
+        Present(false);
+        currentProgram = uprId;
+        glUseProgram(currentProgram);
+    }
+
+    currentSize = renderUPRSize;
+    const float x = (static_cast<float>(rect.x) / W) * 2.0f - 1.0f;
+    const float y = 1.0f - (static_cast<float>(rect.y) / H) * 2.0f;
+    const float w = (static_cast<float>(rect.w) / W) * 2.0f;
+    const float h = (static_cast<float>(rect.h) / H) * 2.0f;
+
+    uint16_t iRG = col.R;
+    iRG <<= 8;
+    iRG += col.G;
+    uint16_t iBA = col.B;
+    iBA <<= 8;
+    iBA += alpha;
+    const float fRG = iRG;
+    const float fBA = iBA;
+
+    const float fW = (float)rect.w;
+    const float fH = (float)rect.h;
+
+    // pos.x, pos.y, pos.z,radius  col.r, col.g, col.b col.a
+    const float vertex[] = {
+        x,     y - h, fRG, fBA, fW, fH, 0.0f,  5.0f,
+        x,     y    , fRG, fBA, fW, fH, 0.0f,  5.0f,
+        x + w, y - h, fRG, fBA, fW, fH, 0.0f,  5.0f,
+        x,     y    , fRG, fBA, fW, fH, 0.0f,  5.0f,
+        x + w, y    , fRG, fBA, fW, fH, 0.0f,  5.0f,
+        x + w, y - h, fRG, fBA, fW, fH, 0.0f,  5.0f
+    };
+
+    constexpr int N = 48;
+    const size_t old = globalVertices.size();
+    globalVertices.resize(old + N);
+    std::memcpy(globalVertices.data() + old, vertex, N * sizeof(float));
+}
+
+void MT::Renderer::RenderCopyRoundedRectUPR(const MT::Rect& rect, const MT::Texture* texture) {
+    if (!vievPort.IsColliding(rect)) { return; }
+
+    if (currentProgram != uprId) {
+        Present(false);
+        currentProgram = uprId;
+        glUseProgram(currentProgram);
+    }
+    if (currentTexture != texture->texture) {
+        Present(false);
+        glBindTexture(GL_TEXTURE_2D, texture->texture);
+        currentTexture = texture->texture;
+    }
+
+    currentSize = renderUPRSize;
+    const float x = (static_cast<float>(rect.x) / W) * 2.0f - 1.0f;
+    const float y = 1.0f - (static_cast<float>(rect.y) / H) * 2.0f;
+    const float w = (static_cast<float>(rect.w) / W) * 2.0f;
+    const float h = (static_cast<float>(rect.h) / H) * 2.0f;
+
+    const float fW = (float)rect.w;
+    const float fH = (float)rect.h;
+
+    const float vertex[] = {
+        x,     y - h, 0.0f, 0.0f,texture->alpha, fW, fH, 6.0f,
+        x,     y,     0.0f, 1.0f,texture->alpha, fW, fH, 6.0f,
+        x + w, y - h, 1.0f, 0.0f,texture->alpha, fW, fH, 6.0f,
+        x,     y,     0.0f, 1.0f,texture->alpha, fW, fH, 6.0f,
+        x + w, y,     1.0f, 1.0f,texture->alpha, fW, fH, 6.0f,
+        x + w, y - h, 1.0f, 0.0f,texture->alpha, fW, fH, 6.0f,
+    };
+
+    constexpr int N = 48;
+    const size_t old = globalVertices.size();
+    globalVertices.resize(old + N);
+    std::memcpy(globalVertices.data() + old, vertex, N * sizeof(float));
+}
+
+void MT::Renderer::RenderCopyFilteredUPR(const Rect& rect, const Texture* texture, const Color& filter) {
+    if (!texture) { return; }
+    if (!vievPort.IsColliding(rect)) { return; }
+
+    const float x = (rect.x / static_cast<float>(W)) * 2.0f - 1.0f;
+    const float y = 1.0f - (rect.y / static_cast<float>(H)) * 2.0f;
+    const float w = (rect.w / static_cast<float>(W)) * 2.0f;
+    const float h = (rect.h / static_cast<float>(H)) * 2.0f;
+
+    if (currentTexture != texture->texture) {
+        Present(false);
+        glBindTexture(GL_TEXTURE_2D, texture->texture);
+        currentTexture = texture->texture;
+    }
+
+    if (currentProgram != uprId) {
+        Present(false);
+        currentProgram = uprId;
+        glUseProgram(currentProgram);
+    }
+    currentSize = renderUPRSize;
+
+    uint16_t iRG = filter.R;
+    iRG <<= 8;
+    iRG += filter.G;
+    const float fRG = iRG;
+    const float fB = float(filter.B) / 255;
+
+    // pos.x, pos.y, tex.u, tex.v col.r,col.g,col.b
+    const float vertex[] = {
+        x,     y - h, 0.0f, 0.0f, fRG, fB, texture->alpha, 7.0f,
+        x,     y,     0.0f, 1.0f, fRG, fB, texture->alpha, 7.0f,
+        x + w, y - h, 1.0f, 0.0f, fRG, fB, texture->alpha, 7.0f,
+        x,     y,     0.0f, 1.0f, fRG, fB, texture->alpha, 7.0f,
+        x + w, y,     1.0f, 1.0f, fRG, fB, texture->alpha, 7.0f,
+        x + w, y - h, 1.0f, 0.0f, fRG, fB, texture->alpha, 7.0f,
+    };
+
+    constexpr int N = 48;
+    const size_t old = globalVertices.size();
+    globalVertices.resize(old + N);
+    std::memcpy(globalVertices.data() + old, vertex, N * sizeof(float));
+}
+
+void MT::Renderer::RenderCopyPartFilteredUPR(const Rect& rect, const Rect& source, const Texture* texture, const Color& filter) {
+    if (!texture) { return; }
+    if (!vievPort.IsColliding(rect)) { return; }
+
+    const float x = (static_cast<float>(rect.x) / W) * 2.0f - 1.0f;
+    const float y = 1.0f - (static_cast<float>(rect.y) / H) * 2.0f;
+    const float w = (static_cast<float>(rect.w) / W) * 2.0f;
+    const float h = (static_cast<float>(rect.h) / H) * 2.0f;
+
+    if (currentTexture != texture->texture) {
+        Present(false);
+        glBindTexture(GL_TEXTURE_2D, texture->texture);
+        currentTexture = texture->texture;
+    }
+
+    if (currentProgram != uprId) {
+        Present(false);
+        currentProgram = uprId;
+        glUseProgram(currentProgram);
+    }
+    currentSize = renderUPRSize;
+    uint16_t iRG = filter.R;
+    iRG <<= 8;
+    iRG += filter.G;
+    const float fRG = iRG;
+    const float fB = float(filter.B) / 255;
+
+    const float tempSourceX = static_cast<float>(source.x) / texture->w;
+    const float tempSourceY = static_cast<float>(source.y) / texture->h;
+    const float tempSourceW = static_cast<float>(source.w) / texture->w;
+    const float tempSourceH = static_cast<float>(source.h) / texture->h;
+
+    const float u0 = tempSourceX;
+    const float u1 = tempSourceX + tempSourceW;
+    const float v1 = 1.0f - tempSourceY;
+    const float v0 = v1 - tempSourceH;
+
+    // pos.x, pos.y, tex.u, tex.v col.r,col.g,col.b
+    const float vertex[] = {
+        x,     y - h, u0, v0, fRG, fB, texture->alpha, 7.0f,
+        x,     y,     u0, v1, fRG, fB, texture->alpha, 7.0f,
+        x + w, y - h, u1, v0, fRG, fB, texture->alpha, 7.0f,
+        x,     y,     u0, v1, fRG, fB, texture->alpha, 7.0f,
+        x + w, y,     u1, v1, fRG, fB, texture->alpha, 7.0f,
+        x + w, y - h, u1, v0, fRG, fB, texture->alpha, 7.0f
+    };
+    constexpr int N = 48;
+    const size_t old = globalVertices.size();
+    globalVertices.resize(old + N);
+    std::memcpy(globalVertices.data() + old, vertex, N * sizeof(float));
+}
+
+void MT::Renderer::Present(bool switchContext) {
     if (globalVertices.empty()) {
         if (switchContext) { SDL_GL_SwapWindow(window); }
         return;
-    }  
+    }
 
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, globalVertices.size() * sizeof(float), globalVertices.data(), GL_DYNAMIC_DRAW);
 
-    glDrawArrays(GL_TRIANGLES, 0, globalVertices.size()/currentSize);
+    glDrawArrays(GL_TRIANGLES, 0, globalVertices.size() / currentSize);
 
     globalVertices.clear();
 
@@ -1217,7 +2070,10 @@ void MT::Renderer::Resize(const unsigned int w, const unsigned int h) {
 }
 
 void MT::Renderer::AgresiveRenderCopySetUp() {
-    agresiveRenderVec.resize(TexMan::GetTexturesAmount() +1);
+    agresiveRenderMap.clear();
+    for (auto& tex : TexMan::GetAllTex()) {
+        agresiveRenderMap.emplace(std::make_pair(tex.second->texture, std::vector<float>()));
+    }
 }
 
 void MT::Renderer::AgressiveRenderCopy(const Rect& rect, const Texture* texture) {
@@ -1231,17 +2087,17 @@ void MT::Renderer::AgressiveRenderCopy(const Rect& rect, const Texture* texture)
     const float h = (rect.h / static_cast<float>(H)) * 2.0f;
 
     //    // pos.x, pos.y tex.u, tex.v
-    float verticles[] = {
-        x,     y - h, 0.0f, 0.0f,texture->alpha,
-        x,     y,     0.0f, 1.0f,texture->alpha,
-        x + w, y - h, 1.0f, 0.0f,texture->alpha,
-        x,     y,     0.0f, 1.0f,texture->alpha,
-        x + w, y,     1.0f, 1.0f,texture->alpha,
-        x + w, y - h, 1.0f, 0.0f,texture->alpha
+    const float verticles[] = {
+        x,     y - h ,texture->alpha,
+        x,     y     ,texture->alpha,
+        x + w, y - h ,texture->alpha,
+        x,     y     ,texture->alpha,
+        x + w, y     ,texture->alpha,
+        x + w, y - h ,texture->alpha
     };
 
-    constexpr int N = 30;
-    std::vector<float>& vec = agresiveRenderVec[texture->texture];
+    constexpr int N = 18;
+    std::vector<float>& vec = agresiveRenderMap[texture->texture];
     const size_t old = vec.size();
     vec.resize(old + N);
     std::memcpy(vec.data() + old, verticles, N * sizeof(float));
@@ -1249,33 +2105,32 @@ void MT::Renderer::AgressiveRenderCopy(const Rect& rect, const Texture* texture)
 
 void MT::Renderer::AgressiveRenderCopyPresent(bool clearVectors) {
     const unsigned int prevProgram = currentProgram;
-
-    glUseProgram(renderCopyId);
+    const unsigned int prevTexture = currentTexture;
+    glUseProgram(renderBaseId);
 
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    for (size_t i = 0; i < agresiveRenderVec.size(); i++) {
-        std::vector<float>& vec = agresiveRenderVec[i];
+    for (auto& entry : agresiveRenderMap) {
+        auto& vec = entry.second;
         if (vec.empty()) { continue; }
-        glBindTexture(GL_TEXTURE_2D, i);
-        glBufferData(GL_ARRAY_BUFFER, vec.size() * sizeof(float),  vec.data(), GL_DYNAMIC_DRAW);
-        glDrawArrays(GL_TRIANGLES, 0, vec.size() / renderCopySize);
+        glBindTexture(GL_TEXTURE_2D, entry.first);
+        glBufferData(GL_ARRAY_BUFFER, vec.size() * sizeof(float), vec.data(), GL_DYNAMIC_DRAW);
+        glDrawArrays(GL_TRIANGLES, 0, vec.size() / renderCopyBaseSize);
         vec.clear();
     }
-
+    glBindTexture(GL_TEXTURE_2D, currentTexture);
     if (prevProgram) glUseProgram(prevProgram);
-
 }
 
 
 void MT::Renderer::SetClipSize(const MT::Rect& rect) {
-    RenderPresent(false);
+    Present(false);
     glEnable(GL_SCISSOR_TEST);
     glScissor(rect.x, rect.y, rect.w, rect.h);
-    
+
 }
 
 void MT::Renderer::ResetClipSize() {
-    RenderPresent(false);
+    Present(false);
     glScissor(0, 0, W, H);
     glDisable(GL_SCISSOR_TEST);
 }
