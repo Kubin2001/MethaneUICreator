@@ -17,7 +17,8 @@ class ProgramScene :public Scene{
 		int panelType = 0; //0 no panel 1 Creation Panel 2 Edit Panel  3 run panel
 		int editPanelState = 0;// 0 normal 1 smaller options
 
-		UISection editPanelTwo;
+		UISection currentSection;
+
 		std::vector<TextBox*> editTextRef;
 		std::vector<ClickBox*> editClickRef;
 

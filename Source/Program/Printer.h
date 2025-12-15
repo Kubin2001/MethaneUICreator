@@ -11,7 +11,7 @@ bool firstclickBox = false;
 bool firstpopUpBox = false;
 int printerOutType = 1;
 
-std::string AditionalToString(Button* button, UI* ui) {
+std::string AditionalToString(UIElemBase* button, UI* ui) {
 	std::string addString;
 	int level = 0;
 	std::array<bool, 6> arr = { 0,0,0,0,0,0 }; // Shows how many are used
@@ -125,7 +125,7 @@ std::string AditionalToString(Button* button, UI* ui) {
 	return addString;
 }
 
-void SelectStrings(std::string &btnOutStr, std::string& getBtnStr, Button* button, int type) {
+void SelectStrings(std::string &btnOutStr, std::string& getBtnStr, UIElemBase* button, int type) {
 	if (type == 1) { // Button
 		if (printerOutType == 1) {
 			if (firstBtn) {
@@ -192,7 +192,7 @@ void SelectStrings(std::string &btnOutStr, std::string& getBtnStr, Button* butto
 	}
 }
 
-std::string ButtonToString(Button* button, int type, UI *ui, int renderType) {
+std::string ButtonToString(UIElemBase* button, int type, UI *ui, int renderType) {
 	std::string btnOutput = "";
 	std::string getBtnStr = "";
 

@@ -27,6 +27,7 @@ void ProgramScene::Init(){
 	runButton = ui->CreateClickBox("RunCB",5,5,30,30,TexMan::GetTex("runBtn"));
 	runButton->SetBorder(1, 100, 100, 230);
 	runButton->SetHoverFilter(true, 255, 255, 255, 120);
+	currentSection.Init(ui);
 }
 
 void ProgramScene::LogicUpdate(){}
@@ -106,7 +107,7 @@ void ProgramScene::FrameUpdate(){
 	}
 
 	else if (panelType == 2) {
-		Button* btn = editedButton->btn;
+		UIElemBase* btn = editedButton->btn;
 		if (editPanelState == 1) {
 			if (editedButton->btn != nullptr) {
 
@@ -571,9 +572,8 @@ void ProgramScene::ShowEditPanel(CreatedElement *button) {
 		HideEditPanel(button);
 	}
 	editedButton = button;
-	Button *ebBtn = editedButton->btn;
+	UIElemBase *ebBtn = editedButton->btn;
 	rightPanel->Show();
-	editPanelTwo.Init(ui);
 
 	int y = rightPanel->GetRectangle().y + 10;
 
@@ -632,21 +632,21 @@ void ProgramScene::ShowEditPanel(CreatedElement *button) {
 		std::to_string(fontColor.G), std::to_string(fontColor.B));
 
 
-	editPanelTwo.Add(ui->CreateClickBoxF("XAxisToogle",Global::windowWidth -100,100,30,30,nullptr,"arial12px"));
-	editPanelTwo.GetClickBoxes().back()->SetBorder(1, 0, 100, 200);
-	editPanelTwo.GetClickBoxes().back()->SetColor(255, 255, 255, 0);
-	editPanelTwo.GetClickBoxes().back()->TurnOff();
-	editPanelTwo.GetClickBoxes().back()->SetText("X Axis Block");
-	editPanelTwo.GetClickBoxes().back()->SetTextStartX(-80);
-	editPanelTwo.GetClickBoxes().back()->SetTextStartY(10);
-	editPanelTwo.GetClickBoxes().back()->Hide();
-	editPanelTwo.Add(ui->CreateClickBoxF("YAxisToogle", Global::windowWidth - 100, 150, 30, 30, nullptr, "arial12px"));
-	editPanelTwo.GetClickBoxes().back()->SetBorder(1, 0, 100, 200);
-	editPanelTwo.GetClickBoxes().back()->SetColor(255, 255, 255, 0);
-	editPanelTwo.GetClickBoxes().back()->Hide();
-	editPanelTwo.GetClickBoxes().back()->SetText("Y Axis Block");
-	editPanelTwo.GetClickBoxes().back()->SetTextStartX(-80);
-	editPanelTwo.GetClickBoxes().back()->SetTextStartY(10);
+	currentSection.Add(ui->CreateClickBoxF("XAxisToogle",Global::windowWidth -100,100,30,30,nullptr,"arial12px"));
+	currentSection.GetClickBoxes().back()->SetBorder(1, 0, 100, 200);
+	currentSection.GetClickBoxes().back()->SetColor(255, 255, 255, 0);
+	currentSection.GetClickBoxes().back()->TurnOff();
+	currentSection.GetClickBoxes().back()->SetText("X Axis Block");
+	currentSection.GetClickBoxes().back()->SetTextStartX(-80);
+	currentSection.GetClickBoxes().back()->SetTextStartY(10);
+	currentSection.GetClickBoxes().back()->Hide();
+	currentSection.Add(ui->CreateClickBoxF("YAxisToogle", Global::windowWidth - 100, 150, 30, 30, nullptr, "arial12px"));
+	currentSection.GetClickBoxes().back()->SetBorder(1, 0, 100, 200);
+	currentSection.GetClickBoxes().back()->SetColor(255, 255, 255, 0);
+	currentSection.GetClickBoxes().back()->Hide();
+	currentSection.GetClickBoxes().back()->SetText("Y Axis Block");
+	currentSection.GetClickBoxes().back()->SetTextStartX(-80);
+	currentSection.GetClickBoxes().back()->SetTextStartY(10);
 	editPanelState = 0;
 	panelType = 2;
 }
@@ -664,13 +664,13 @@ void ProgramScene::HideEditPanel(CreatedElement* button) {
 	ui->DeleteClickBox("KeyUpdateAll");
 	ui->DeleteClickBox("setingBtn");
 	editedButton = nullptr;
-	editPanelTwo.Clear();
+	currentSection.Clear();
 	editPanelState = 0;
 	panelType = 0;
 }
 
 template <typename T>
-void ConvertElement(T* cBtn, Button *btn, UI *Ui) {
+void ConvertElement(T* cBtn, UIElemBase* btn, UI *Ui) {
 	static_assert(std::is_same_v<T, Button> || std::is_same_v<T, TextBox> 
 		|| std::is_same_v<T, ClickBox> || std::is_same_v<T, PopUpBox>, "Wrong type");
 
@@ -697,7 +697,7 @@ void ProgramScene::ShowRunPanel() {
 
 	for (auto& it : elements) {
 		it.btn->Hide();
-		Button* btn = it.btn;
+		UIElemBase* btn = it.btn;
 		MT::Rect& rect = btn->GetRectangle();
 		switch(it.type){
 			case 1: {
@@ -779,10 +779,12 @@ void ProgramScene::CreateOutputSubPanel() {
 	btn->SetRenderTextType(4);
 	btn->SetColor(50, 30, 50, 255);
 	btn->SetBorder(2, 100, 100, 255);
+	currentSection.Add(btn);
 
-	auto Adjust = [](ClickBox* cb) {
+	auto Adjust = [&](ClickBox* cb) {
 		cb->SetBorder(1, 100, 100, 255);
 		cb->SetHoverFilter(true, 255, 255, 255, 120, "hoverSound");
+		currentSection.Add(cb);
 	};
 
 	ClickBox *cb = ui->CreateClickBox("btnRefOpt", 120, 160, 60, 60, nullptr, ui->GetFont("arial12px"), "Reference", 1.0f, 0, -15);
@@ -813,8 +815,5 @@ void ProgramScene::CreateOutputSubPanel() {
 }
 
 void ProgramScene::HideOutputSubPanel() {
-	ui->DeleteAnyElem("outBtnBack");
-	ui->DeleteAnyElem("btnRefOpt");
-	ui->DeleteAnyElem("brnDirOut");
-	ui->DeleteAnyElem("outConfBtn");
+	currentSection.Clear();
 }
