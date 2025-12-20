@@ -12,9 +12,9 @@ std::string& UIElemBase::GetName() {
 	return name;
 }
 
-void UIElemBase::SetName(const std::string &value) {
-	name = value;
-}
+//void UIElemBase::SetName(const std::string &value) {
+//	name = value;
+//}
 
 void UIElemBase::SetText(const std::string &temptext) {
 	text = temptext;
@@ -454,13 +454,13 @@ Button* UI::CreateButton(const std::string& name, int x, int y, int w, int h, MT
 	const std::string& text, float textScale, int textStartX, int textStartY, int borderThickness) {
 
 	if (GetButton(name) != nullptr) {
-		std::cout << "Warning name collision button with name: " << name << " already exists addition abborted\n";
+		std::cout << "Warning name collision Button with name: " << name << " already exists addition abborted\n";
 		return nullptr;
 	}
 
 	Buttons.emplace_back(new Button());
 	Button* btn = Buttons.back();
-	btn->SetName(name);
+	btn->name = name;
 	btn->GetRectangle().Set(x, y, w, h);
 	btn->SetRenderType(1);
 
@@ -489,13 +489,13 @@ TextBox* UI::CreateTextBox(const std::string& name, int x, int y, int w, int h, 
 	const std::string& text, float textScale, int textStartX, int textStartY, int borderThickness) {
 
 	if (GetTextBox(name) != nullptr) {
-		std::cout << "Warning name collision massage box with name: " << name << " already exists addition abborted\n";
+		std::cout << "Warning name collision TextBox with name: " << name << " already exists addition abborted\n";
 		return nullptr;
 	}
 
 	TextBoxes.emplace_back(new TextBox());
 	TextBox* tb = TextBoxes.back();
-	tb->SetName(name);
+	tb->name = name;
 	tb->GetRectangle().Set(x, y, w, h);
 	tb->SetRenderType(1);
 
@@ -532,7 +532,7 @@ ClickBox* UI::CreateClickBox(const std::string& name, int x, int y, int w, int h
 
 	ClickBoxes.emplace_back(new ClickBox());
 	ClickBox* cb = ClickBoxes.back();
-	cb->SetName(name);
+	cb->name = name;
 	cb->GetRectangle().Set(x, y, w, h);
 	cb->SetRenderType(1);
 
@@ -561,13 +561,13 @@ ClickBox* UI::CreateClickBox(const std::string& name, int x, int y, int w, int h
 PopUpBox* UI::CreatePopUpBox(const std::string& name, int lifeSpan, int x, int y, int w, int h, MT::Texture* texture, Font* font,
 	const std::string& text, float textScale, int textStartX, int textStartY, int borderThickness) {
 	if (GetPopUpBox(name) != nullptr) {
-		std::cout << "Warning name collision interaction box with name: " << name << " already exists addition abborted\n";
+		std::cout << "Warning name collision PopUpBox with name: " << name << " already exists addition abborted\n";
 		return nullptr;
 	}
 
 	PopUpBoxes.emplace_back(new PopUpBox());
 	PopUpBox* pb = PopUpBoxes.back();
-	pb->SetName(name);
+	pb->name = name;
 	pb->SetLifeTime(lifeSpan);
 	pb->GetRectangle().Set(x, y, w, h);
 	pb->SetRenderType(1);
@@ -612,6 +612,18 @@ ClickBox* UI::CreateClickBoxF(const std::string& name, int x, int y, int w, int 
 PopUpBox* UI::CreatePopUpBoxF(const std::string& name, int lifeSpan, int x, int y, int w, int h, MT::Texture* texture, const std::string& fontSt,
 	const std::string& text, float textScale, int textStartX, int textStartY, int borderThickness) {
 	return CreatePopUpBox(name, lifeSpan, x, y, w, h, texture, GetFont(fontSt), text, textScale, textStartX, textStartY, borderThickness);
+}
+
+bool UI::RenameElem(const std::string& name, const std::string& newName) {
+	auto elem = UIElemMap.find(name);
+
+	if (elem == UIElemMap.end()) {
+		return false;
+	}
+	UIElemBase* elemPtr = elem->second;
+	UIElemMap.erase(name);
+	UIElemMap[newName] = elemPtr;
+	return true;
 }
 
 void UI::CheckHover() {
@@ -707,6 +719,12 @@ ClickBox* UI::GetClickBox(const std::string& name) {
 
 PopUpBox* UI::GetPopUpBox(const std::string& name) {
 	return UIGetElem<PopUpBox>(name);
+}
+
+bool UI::ConsumeIfExist(const std::string& name) {
+	ClickBox* cb = UIGetElem<ClickBox>(name);
+	if (cb == nullptr) { return false; }
+	return cb->ConsumeStatus();
 }
 
 void UI::SetElementColor(const std::string& name, const unsigned char R, const unsigned char G, const unsigned char B) {
@@ -1062,17 +1080,18 @@ void UI::DumpToJson(const std::string &fileName, const std::vector<UIElemBase*>&
 	file << jsonFile;
 }
 
-void UI::LoadFromJson(const std::string& fileName) {
-	std::ifstream file(fileName + ".json");
+std::vector<UIElemBase*> UI::LoadFromJson(const std::string& fileName) {
+	std::vector<UIElemBase*> loadedElements;
+	std::ifstream file(fileName);
 	if (!file.is_open()) {
-		return;
+		return loadedElements;
 	}
 	nlohmann::json jsonFile;
 	try {
 		file >> jsonFile;
 	}
 	catch (const std::exception&) {
-		return;
+		return loadedElements;
 	}
 
 	for (auto& [key, val] : jsonFile.items()) {
@@ -1146,24 +1165,29 @@ void UI::LoadFromJson(const std::string& fileName) {
 		if (type == 1) {
 			Button* btn = CreateButton(key, 0, 0, 0, 0);
 			*btn = *dynamic_cast<Button*>(elem.get());
+			loadedElements.emplace_back(btn);
 		}
 		else if (type == 2) {
 			ClickBox* cb = CreateClickBox(key, 0, 0, 0, 0);
 			*cb = *dynamic_cast<ClickBox*>(elem.get());
 			cb->turnedOn = val["TurnedOn"];
 			cb->clickSound = val["ClickSound"];
+			loadedElements.emplace_back(cb);
 		}
 		else if (type == 3) {
 			TextBox* tb = CreateTextBox(key, 0, 0, 0, 0);
 			*tb = *dynamic_cast<TextBox*>(elem.get());
 			tb->turnedOn = val["TurnedOn"];
+			loadedElements.emplace_back(tb);;
 		}
 		else if (type == 4) {
 			PopUpBox* pb = CreatePopUpBox(key, 0, 0, 0, 0, 0);
 			*pb = *dynamic_cast<PopUpBox*>(elem.get());
 			pb->lifeTime = val["LifeTime"];
+			loadedElements.emplace_back(pb);
 		}
 	}
+	return loadedElements;
 }
 
 void UI::ClearAll(bool clearLists) {

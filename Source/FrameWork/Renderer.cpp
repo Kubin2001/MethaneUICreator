@@ -3,6 +3,7 @@
 #include "glad/glad.h"
 #include <SDL_image.h>
 #include <chrono>
+#include <algorithm>
 
 #include "Colision.h"
 #include "TextureManager.h"
@@ -65,23 +66,26 @@ MT::Texture* MT::LoadTexture(const char* path) {
         SDL_Surface* formatted = SDL_ConvertSurfaceFormat(surf, SDL_PIXELFORMAT_RGBA32, 0); // Aby się nie crashowało jak jest zły format
         SDL_FreeSurface(surf);
         surf = formatted;
-        surf = FlipSurfaceVertical(surf);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, surf->w, surf->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, surf->pixels); // RGBA dla png
-        metTex->w = surf->w;
-        metTex->h = surf->h;
+        SDL_Surface *flipped = FlipSurfaceVertical(surf);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, flipped->w, flipped->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, flipped->pixels); // RGBA dla png
+        metTex->w = flipped->w;
+        metTex->h = flipped->h;
         glGenerateMipmap(GL_TEXTURE_2D);
+        SDL_FreeSurface(flipped);
     }
     SDL_FreeSurface(surf);
 
     return metTex;
 }
 
-void MT::DeleteTexture(Texture* tex) {
-    glDeleteTextures(1, &tex->texture);
-    tex->texture = 0;
-    tex->w = 0;
-    tex->h = 0;
-}
+void MT::DeleteTexture(Texture*& tex) { 
+    if (tex == nullptr) { return; } 
+    glDeleteTextures(1, &tex->texture); 
+    tex->texture = 0; 
+    tex->w = 0; 
+    tex->h = 0; 
+    delete tex; 
+    tex = nullptr; }
 
 MT::Texture* MT::LoadTextureFromSurface(SDL_Surface* surf) {
     unsigned int texture;
@@ -150,9 +154,10 @@ bool MT::Renderer::Start(SDL_Window* window, SDL_GLContext context) {
     // (void*)0 - przesunięcie do pierwszego elementu w buforze
 
     //Rectangle
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0); // powierzchnie
-    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(2 * sizeof(float))); // kolory + alpha
+    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0); // powierzchnie + RGBA RenderRectangle
 
+    //Flat Copy
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0); // tylko powerzchnia
     //Render Copy Base
     glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0); // powierzchnie + aplha bez tekstur
 
@@ -204,6 +209,7 @@ bool MT::Renderer::Start(SDL_Window* window, SDL_GLContext context) {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     renderCopyId = loader.GetProgram("RenderCopy");
     renderBaseId = loader.GetProgram("RenderCopyBase");
+    flatRenderCopyId = loader.GetProgram("FlatCopyBase");
     renderRectId = loader.GetProgram("RenderRect");
     renderCopyCircleId = loader.GetProgram("RenderCopyCircle");
     renderCircleId = loader.GetProgram("RenderCircle");
@@ -221,17 +227,27 @@ void MT::Renderer::LoadShaders() {
     if (!loader.IsProgram("RenderRect")) {
         constexpr const char* vertexStr = R"glsl(
         #version 330 core
-        layout(location = 0) in vec2 aPos;
-        layout(location = 1) in vec4 aColor;
+        layout(location = 0) in vec4 aPosRGBA;
 
-            out vec3 ourColor;
-            out float vAlpha;
+        out vec4 ourColor;
+        out float vAlpha;
 
-            void main() {
-                gl_Position = vec4(aPos,0.0, 1.0);
-                ourColor = aColor.xyz;
-                vAlpha = aColor.a;    
-            }
+        vec2 unpackHalfColor(float packedColor){
+	        int col = int(packedColor);
+	        float r  = float((col >> 8) & 255); // in RG it would be R
+	        float g = float(col & 255); // This would be B
+	        r /=255.0;
+	        g /=255.0;
+	        return vec2(r, g);
+        }
+
+        void main() {
+            gl_Position = vec4(aPosRGBA.xy,0.0, 1.0);
+	        vec2 vRG = unpackHalfColor(aPosRGBA.z);
+	        vec2 vBA = unpackHalfColor(aPosRGBA.w);
+            ourColor.xy = vRG;
+	        ourColor.zw = vBA;
+        }
         )glsl";
 
         constexpr const char* fragmentStr = R"glsl(
@@ -239,15 +255,53 @@ void MT::Renderer::LoadShaders() {
 
         out vec4 FragColor;
 
-        in vec3 ourColor;
-        in float vAlpha;
+        in vec4 ourColor;
 
         void main(){
-	        FragColor = vec4(ourColor,1.0 * vAlpha);
+	        FragColor = vec4(ourColor.xyz,1.0 * ourColor.w);
         }
         )glsl";
 
         loader.CreateProgramStr("RenderRect", vertexStr, fragmentStr);
+    }
+
+    if (!loader.IsProgram("FlatCopyBase")) {
+        constexpr const char* vertexStr = R"glsl(
+        #version 330 core
+        layout (location = 1) in vec2 aPos;
+
+        vec2 uvFromVertexID(int id) {
+            if      (id == 0) return vec2(0.0, 0.0);
+            else if (id == 1) return vec2(0.0, 1.0);
+            else if (id == 2) return vec2(1.0, 0.0);
+            else if (id == 3) return vec2(0.0, 1.0);
+            else if (id == 4) return vec2(1.0, 1.0);
+            else              return vec2(1.0, 0.0);
+        }
+        out vec2 vUV;
+
+        void main(){
+	        gl_Position = vec4(aPos.xy, 0.0 ,1.0);
+            vUV = uvFromVertexID(gl_VertexID % 6);
+        }
+        )glsl";
+
+        constexpr const char* fragmentStr = R"glsl(
+        #version 330 core
+
+        out vec4 FragColor;
+
+        in vec2 vUV;
+
+        uniform sampler2D texture1;
+
+        void main(){
+	        vec4 texcolor = texture(texture1,vUV);
+	        FragColor = texcolor;
+        }
+        )glsl";
+
+        loader.CreateProgramStr("FlatCopyBase", vertexStr, fragmentStr);
     }
 
     if (!loader.IsProgram("RenderCopyBase")) {
@@ -785,26 +839,30 @@ void MT::Renderer::RenderRect(const Rect& rect, const Color& col, const int alph
         glUseProgram(renderRectId);
     }
     currentSize = renderRectSize;
-    float x = (static_cast<float>(rect.x) / W) * 2.0f - 1.0f;
-    float y = 1.0f - (static_cast<float>(rect.y) / H) * 2.0f;
-    float w = (static_cast<float>(rect.w) / W) * 2.0f;
-    float h = (static_cast<float>(rect.h) / H) * 2.0f;
+    const float x = (static_cast<float>(rect.x) / W) * 2.0f - 1.0f;
+    const float y = 1.0f - (static_cast<float>(rect.y) / H) * 2.0f;
+    const float w = (static_cast<float>(rect.w) / W) * 2.0f;
+    const float h = (static_cast<float>(rect.h) / H) * 2.0f;
 
-    const float fR = float(col.R) / 255;
-    const float fG = float(col.G) / 255;
-    const float fB = float(col.B) / 255;
+    uint16_t iRG = col.R;
+    iRG <<= 8;
+    iRG += col.G;
+    uint16_t iBA = col.B;
+    iBA <<= 8;
+    iBA += alpha;
+    const float fRG = iRG;
+    const float fBA = iBA;
 
-    float floatAlpha = float(alpha) / 255;
     // pos.x, pos.y, col.r, col.g, col.b
     const float vertices[] = {
-        x,     y - h, fR, fG, fB, floatAlpha,
-        x,     y,     fR, fG, fB, floatAlpha,
-        x + w, y - h, fR, fG, fB, floatAlpha,
-        x,     y,     fR, fG, fB, floatAlpha,
-        x + w, y,     fR, fG, fB, floatAlpha,
-        x + w, y - h, fR, fG, fB, floatAlpha
+        x,     y - h, fRG, fBA,
+        x,     y,     fRG, fBA,
+        x + w, y - h, fRG, fBA,
+        x,     y,     fRG, fBA,
+        x + w, y,     fRG, fBA,
+        x + w, y - h, fRG, fBA
     };
-    constexpr int N = 36;
+    constexpr int N = 24;
     const size_t old = globalVertices.size();
     globalVertices.resize(old + N);
     std::memcpy(globalVertices.data() + old, vertices, N * sizeof(float));
@@ -840,13 +898,17 @@ void MT::Renderer::RenderRectEX(const Rect& rect, const Color& col, const float 
     }
 
     currentSize = renderRectSize;
-    float halfW = rect.w * 0.5f;
-    float halfH = rect.h * 0.5f;
+    const float halfW = rect.w * 0.5f;
+    const float halfH = rect.h * 0.5f;
 
-    const float fR = float(col.R) / 255.0f;
-    const float fG = float(col.G) / 255.0f;
-    const float fB = float(col.B) / 255.0f;
-    const float fA = float(alpha) / 255.0f;
+    uint16_t iRG = col.R;
+    iRG <<= 8;
+    iRG += col.G;
+    uint16_t iBA = col.B;
+    iBA <<= 8;
+    iBA += alpha;
+    const float fRG = iRG;
+    const float fBA = iBA;
 
     const float rad = glm::radians(rotation);
     const float cosA = cosf(rad);
@@ -862,14 +924,14 @@ void MT::Renderer::RenderRectEX(const Rect& rect, const Color& col, const float 
     const glm::vec2 p5 = RotateNdc(halfW, -halfH, centerPx, cosA, sinA, W, H);
 
     const float vertices[] = {
-        p0.x, p0.y, fR, fG, fB, fA,
-        p1.x, p1.y, fR, fG, fB, fA,
-        p2.x, p2.y, fR, fG, fB, fA,
-        p3.x, p3.y, fR, fG, fB, fA,
-        p4.x, p4.y, fR, fG, fB, fA,
-        p5.x, p5.y, fR, fG, fB, fA
+        p0.x, p0.y, fRG, fBA,
+        p1.x, p1.y, fRG, fBA,
+        p2.x, p2.y, fRG, fBA,
+        p3.x, p3.y, fRG, fBA,
+        p4.x, p4.y, fRG, fBA,
+        p5.x, p5.y, fRG, fBA
     };
-    constexpr int N = 36;
+    constexpr int N = 24;
     const size_t old = globalVertices.size();
     globalVertices.resize(old + N);
     std::memcpy(globalVertices.data() + old, vertices, N * sizeof(float));
@@ -886,8 +948,6 @@ void MT::Renderer::DrawLine(const int x1, const int y1, const int x2, const int 
     }
 
     currentSize = renderRectSize;
-
-
 
     glm::vec2 p1 = glm::vec2{ (static_cast<float>(x1) / W) * 2.0f - 1.0f,
     1.0f - (static_cast<float>(y1) / H) * 2.0f };
@@ -909,22 +969,27 @@ void MT::Renderer::DrawLine(const int x1, const int y1, const int x2, const int 
     glm::vec2 v2 = p2 - offset;
     glm::vec2 v3 = p2 + offset;
 
-    const float fR = float(col.R) / 255;
-    const float fG = float(col.G) / 255;
-    const float fB = float(col.B) / 255;
-    const float fA = float(alpha) / 255;
+    uint16_t iRG = col.R;
+    iRG <<= 8;
+    iRG += col.G;
+    uint16_t iBA = col.B;
+    iBA <<= 8;
+    iBA += alpha;
+    const float fRG = iRG;
+    const float fBA = iBA;
 
-    const float vertex[] = {
-        v0.x, v0.y, fR, fG, fB, fA,
-        v1.x, v1.y, fR, fG, fB, fA,
-        v2.x, v2.y, fR, fG, fB, fA,
-
-        v0.x, v0.y, fR, fG, fB, fA,
-        v2.x, v2.y, fR, fG, fB, fA,
-        v3.x, v3.y, fR, fG, fB, fA
+    const float vertices[] = {
+        v0.x, v0.y, fRG, fBA,
+        v1.x, v1.y, fRG, fBA,
+        v2.x, v2.y, fRG, fBA,
+        v0.x, v0.y, fRG, fBA,
+        v2.x, v2.y, fRG, fBA,
+        v3.x, v3.y, fRG, fBA
     };
-
-    globalVertices.insert(globalVertices.end(), std::begin(vertex), std::end(vertex));
+    constexpr int N = 24;
+    const size_t old = globalVertices.size();
+    globalVertices.resize(old + N);
+    std::memcpy(globalVertices.data() + old, vertices, N * sizeof(float));
 }
 
 
@@ -2056,6 +2121,7 @@ void MT::Renderer::Clear() {
 
     globalVertices.clear();
     globalVertices.shrink_to_fit();
+    flatRenderVec.clear();
 
     SDL_GL_DeleteContext(context);
 }
@@ -2069,14 +2135,16 @@ void MT::Renderer::Resize(const unsigned int w, const unsigned int h) {
     glViewport(0, 0, W, H);
 }
 
-void MT::Renderer::AgresiveRenderCopySetUp() {
-    agresiveRenderMap.clear();
+void MT::Renderer::FLatRenderCopySetUp() {
+    flatRenderVec.clear();
+    int i = 0;
     for (auto& tex : TexMan::GetAllTex()) {
-        agresiveRenderMap.emplace(std::make_pair(tex.second->texture, std::vector<float>()));
+        tex.second->batchIndex = i++;
+        flatRenderVec.emplace_back(tex.second->texture);
     }
 }
 
-void MT::Renderer::AgressiveRenderCopy(const Rect& rect, const Texture* texture) {
+void MT::Renderer::FLatRenderCopy(const Rect& rect, const Texture* texture) {
     if (!texture) { return; }
     if (!vievPort.IsColliding(rect)) {
         return;
@@ -2086,35 +2154,35 @@ void MT::Renderer::AgressiveRenderCopy(const Rect& rect, const Texture* texture)
     const float w = (rect.w / static_cast<float>(W)) * 2.0f;
     const float h = (rect.h / static_cast<float>(H)) * 2.0f;
 
-    //    // pos.x, pos.y tex.u, tex.v
+    // pos.x, pos.y
     const float verticles[] = {
-        x,     y - h ,texture->alpha,
-        x,     y     ,texture->alpha,
-        x + w, y - h ,texture->alpha,
-        x,     y     ,texture->alpha,
-        x + w, y     ,texture->alpha,
-        x + w, y - h ,texture->alpha
+        x,     y - h ,
+        x,     y     ,
+        x + w, y - h ,
+        x,     y     ,
+        x + w, y     ,
+        x + w, y - h
     };
 
-    constexpr int N = 18;
-    std::vector<float>& vec = agresiveRenderMap[texture->texture];
+    constexpr int N = 12;
+    std::vector<float>& vec = flatRenderVec[texture->batchIndex].vertices;
     const size_t old = vec.size();
     vec.resize(old + N);
     std::memcpy(vec.data() + old, verticles, N * sizeof(float));
 }
 
-void MT::Renderer::AgressiveRenderCopyPresent(bool clearVectors) {
+void MT::Renderer::FLatRenderCopyPresent(bool clearVectors) {
     const unsigned int prevProgram = currentProgram;
     const unsigned int prevTexture = currentTexture;
-    glUseProgram(renderBaseId);
+    glUseProgram(flatRenderCopyId);
 
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    for (auto& entry : agresiveRenderMap) {
-        auto& vec = entry.second;
+    for (auto& entry : flatRenderVec) {
+        auto& vec = entry.vertices;
         if (vec.empty()) { continue; }
-        glBindTexture(GL_TEXTURE_2D, entry.first);
+        glBindTexture(GL_TEXTURE_2D, entry.textureID);
         glBufferData(GL_ARRAY_BUFFER, vec.size() * sizeof(float), vec.data(), GL_DYNAMIC_DRAW);
-        glDrawArrays(GL_TRIANGLES, 0, vec.size() / renderCopyBaseSize);
+        glDrawArrays(GL_TRIANGLES, 0, vec.size() / flatRenderCopySize);
         vec.clear();
     }
     glBindTexture(GL_TEXTURE_2D, currentTexture);

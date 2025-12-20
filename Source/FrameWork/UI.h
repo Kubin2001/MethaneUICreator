@@ -62,7 +62,8 @@ public:
 public:
 	std::string& GetName();
 
-	void SetName(const std::string &value);
+	// Unused breaks hash use ui->Rename()
+	//void SetName(const std::string &value);
 
 	std::string& GetText();
 	void SetText(const std::string &temptext);
@@ -204,6 +205,8 @@ class RenderingLayer {
 template<typename T>
 class UIList;
 
+class UISection;
+
 // To propelly start the UI you need to place manage input function in event loop and render in rendering loop
 class UI{
 	public:
@@ -295,6 +298,9 @@ class UI{
 		PopUpBox* CreatePopUpBoxF(const std::string& name, int lifeSpan, int x, int y, int w, int h, MT::Texture* texture = nullptr, const std::string& fontStr= "",
 			const std::string& text = "", float textScale = 1.0f, int textStartX = 0, int textStartY = 0, int borderThickness = 0);
 
+		// Renaming and rehasing element
+		bool RenameElem(const std::string& name, const std::string& newName);
+
 		void CheckHover();
 
 		void CheckTextBoxInteraction(SDL_Event& event);
@@ -323,6 +329,9 @@ class UI{
 		TextBox* GetTextBox(const std::string& name);
 		ClickBox* GetClickBox(const std::string& name);
 		PopUpBox* GetPopUpBox(const std::string& name);
+
+		// Consumes click box status if click box exist safe and recomended to ui->getClickBox->ConsumeStatus()
+		bool ConsumeIfExist(const std::string& name);
 
 		void SetElementColor(const std::string& name, const unsigned char R, unsigned char G, unsigned char B);
 
@@ -416,7 +425,7 @@ class UI{
 
 		void DumpToJson(const std::string& fileName, const std::vector<UIElemBase*>& elements);
 
-		void LoadFromJson(const std::string& fileName);
+		std::vector<UIElemBase*> LoadFromJson(const std::string& fileName);
 
 		void ClearAll(bool clearLists = true);
 
@@ -556,9 +565,17 @@ class UISection {
 
 		std::vector<ClickBox*> clickBoxes = {};
 
+		std::vector<PopUpBox*> popUpBoxes = {};
+
 		UI* ui = nullptr;
 
 	public:
+		UISection() = default;
+
+		UISection(UI* ui) {
+			this->ui = ui;
+		}
+
 		void Init(UI *ui) {
 			this->ui = ui;		
 		}
@@ -581,6 +598,12 @@ class UISection {
 			}
 			clickBoxes.emplace_back(clickBox);
 		}
+		void Add(PopUpBox* popUpBox) {
+			if (ui == nullptr) {
+				throw std::runtime_error("UI is nullptr section is not inicialized");
+			}
+			popUpBoxes.emplace_back(popUpBox);
+		}
 
 		void Clear() {
 			for (auto& elem: buttons) {
@@ -592,12 +615,17 @@ class UISection {
 			for (auto& elem : textBoxes) {
 				ui->DeleteTextBox(elem->GetName());
 			}
+			for (auto& elem : popUpBoxes) {
+				ui->DeleteTextBox(elem->GetName());
+			}
 			buttons.clear();
 			textBoxes.clear();
 			clickBoxes.clear();
+			popUpBoxes.clear();
 		}	
 
 		std::vector<Button*>& GetButtons() { return buttons; }
 		std::vector<TextBox*>& GetTextBoxes() { return textBoxes; }
 		std::vector<ClickBox*>& GetClickBoxes() { return clickBoxes; }
+		std::vector<PopUpBox*>& GetPopUpBoxes() { return popUpBoxes; }
 };

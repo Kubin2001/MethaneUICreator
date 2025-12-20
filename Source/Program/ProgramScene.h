@@ -27,7 +27,7 @@ class ProgramScene :public Scene{
 		std::vector<ClickBox*> runClickRef;
 		std::vector<PopUpBox*> runPopUpRef;
 
-		bool outOptions = false;
+		int outInPanel = 0;//1 output 2 input
 		int outputType = 1; // 1 Przez referencje 2 Przez UI getbutton("name) 
 
 		void ShowPanel();
@@ -57,6 +57,10 @@ class ProgramScene :public Scene{
 		void CreateOutputSubPanel();
 
 		void HideOutputSubPanel();
+
+		void CreateInputSubPanel();
+
+		void HideInputSubPanel();
 
 	public:
 		void Init();

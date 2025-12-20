@@ -19,7 +19,7 @@ std::string AditionalToString(UIElemBase* button, UI* ui) {
 	//Texture
 	std::string textureName = "";
 	if (button->GetTexture() != nullptr) {
-		for (auto& it : TexMan::Textures) {
+		for (auto& it : TexMan::GetAllTex()) {
 			if (button->GetTexture() == it.second) {
 				textureName = it.first;
 			}

@@ -3,6 +3,8 @@
 #include <print>
 
 #include "Helpers.h"
+
+#include "Files.h"
 #include "Printer.h"
 #include "Loader.h"
 
@@ -181,7 +183,7 @@ void ProgramScene::FrameUpdate(){
 		}
 
 		if (ui->GetClickBox("KeyEditName")->ConsumeStatus()) {
-			btn->SetName(ui->GetTextBox("KeyEditNametb")->GetText());
+			ui->RenameElem(btn->GetName(), ui->GetTextBox("KeyEditNametb")->GetText());
 		}
 		else if (ui->GetClickBox("KeyEditX")->ConsumeStatus()) {
 			int val = 0;
@@ -302,35 +304,51 @@ void ProgramScene::FrameUpdate(){
 		}
 	}
 
-	if (outOptions) {
-		if (ui->GetClickBox("btnRefOpt")->ConsumeStatus()) {
-			outputType = 1;
-			ui->GetClickBox("brnDirOut")->SetColor(255, 0, 0);
-			ui->GetClickBox("btnRefOpt")->SetColor(0, 255, 0);
+		
+	if (ui->ConsumeIfExist("btnRefOpt")) {
+		outputType = 1;
+		ui->GetClickBox("brnDirOut")->SetColor(255, 0, 0);
+		ui->GetClickBox("btnRefOpt")->SetColor(0, 255, 0);
+	}
+	if (ui->ConsumeIfExist("brnDirOut")) {
+		outputType = 2;
+		ui->GetClickBox("brnDirOut")->SetColor(0,255,0);
+		ui->GetClickBox("btnRefOpt")->SetColor(255, 0, 0);
+	}
+	if (ui->ConsumeIfExist("outJsonCb")) {
+		std::vector<UIElemBase*> dumpElements;
+		for (auto& elem : elements) {
+			dumpElements.emplace_back(elem.btn);
 		}
-		if (ui->GetClickBox("brnDirOut")->ConsumeStatus()) {
-			outputType = 2;
-			ui->GetClickBox("brnDirOut")->SetColor(0,255,0);
-			ui->GetClickBox("btnRefOpt")->SetColor(255, 0, 0);
-		}
-
-		if (ui->GetClickBox("outJsonCb")->ConsumeStatus()) {
-			std::vector<UIElemBase*> dumpElements;
-			for (auto& elem : elements) {
-				dumpElements.emplace_back(elem.btn);
-			}
-			ui->DumpToJson("jsonDump",dumpElements);
-		}
-		if(ui->GetClickBox("outConfBtn")->ConsumeStatus()){
-			OutputUILayout(elements, ui, outputType);
-			HideOutputSubPanel();
-			outOptions = false;
-		}
-
-
-
+		ui->DumpToJson("jsonDump",dumpElements);
+	}	
+	if(ui->ConsumeIfExist("outConfBtn")){
+		OutputUILayout(elements, ui, outputType);
+		HideOutputSubPanel();
 	}
 
+	// Output
+	if(ui->ConsumeIfExist("loadJson")){
+		FileExplorer fe;
+		std::string fileName = fe.Open("");
+		std::vector <UIElemBase*> loadedElements = ui->LoadFromJson(fileName);
+		for (auto& elem : loadedElements) {
+			int type = 0;
+			if (dynamic_cast<Button*>(elem) != nullptr) {
+				type = 1;
+			}
+			if (dynamic_cast<TextBox*>(elem) != nullptr) {
+				type = 2;
+			}
+			if (dynamic_cast<ClickBox*>(elem) != nullptr) {
+				type = 3;
+			}
+			if (dynamic_cast<PopUpBox*>(elem) != nullptr) {
+				type = 4;
+			}
+			elements.emplace_back(elem,type);
+		}
+	}
 	MoveSelected();
 }
 
@@ -346,17 +364,21 @@ void ProgramScene::Input(SDL_Event& event){
 		}
 		else if (event.key.keysym.scancode == SDL_SCANCODE_O) { // output
 			if (panelType == 2) { return; }
-			if (!outOptions) {
-				CreateOutputSubPanel();
-				outOptions = true;
+			if (outInPanel == 1) {
+				HideOutputSubPanel();
 			}
 			else {
-				HideOutputSubPanel();
-				outOptions = false;
+				CreateOutputSubPanel();
 			}
 		}
 		else if (event.key.keysym.scancode == SDL_SCANCODE_I) { // input
-			LoadUIFromText(ui, "README.md");
+			if (panelType == 2) { return; }
+			if (outInPanel == 2) {
+				HideInputSubPanel();
+			}
+			else {
+				CreateInputSubPanel();
+			}
 		}
 		else if (event.key.keysym.scancode == SDL_SCANCODE_DELETE) {
 			CreatedElement* elem = nullptr;
@@ -593,7 +615,7 @@ void ProgramScene::ShowEditPanel(CreatedElement *button) {
 	CreateEditBox("KeyEditH", y, "H: ", std::to_string(ebBtn->GetRectangle().h));
 	std::string textureName = "";
 	if (ebBtn->GetTexture() != nullptr) {
-		for (auto& it : TexMan::Textures) {
+		for (auto& it : TexMan::GetAllTex()) {
 			if (ebBtn->GetTexture() == it.second) {
 				textureName = it.first;
 			}
@@ -775,7 +797,8 @@ void ProgramScene::MoveSelected() {
 }
 
 void ProgramScene::CreateOutputSubPanel() {
-	Button *btn = ui->CreateButton("outBtnBack", 100, 100, 400, 250,nullptr,ui->GetFont("arial20px"),"OutputOptions",1.0f,0,10);
+	currentSection.Clear();
+	Button *btn = ui->CreateButton("outBtnBack", 100, 100, 300, 250,nullptr,ui->GetFont("arial20px"),"OutputOptions",1.0f,0,10);
 	btn->SetRenderTextType(4);
 	btn->SetColor(50, 30, 50, 255);
 	btn->SetBorder(2, 100, 100, 255);
@@ -802,18 +825,41 @@ void ProgramScene::CreateOutputSubPanel() {
 	cb->SetColor(255, 0, 0, 255);
 	Adjust(cb);
 
-	cb = ui->CreateClickBox("loadJsonCb", 420, 160, 60, 60, nullptr, ui->GetFont("arial12px"), "JsonLoad", 1.0f, 0, -15);
-	cb->SetRenderTextType(4);
-	cb->SetColor(0, 255, 0, 255);
-	Adjust(cb);
-
-	cb = ui->CreateClickBox("outConfBtn", 300, 240, 100, 50, nullptr, ui->GetFont("arial20px"), "Confirm");
+	cb = ui->CreateClickBox("outConfBtn", 200, 240, 100, 50, nullptr, ui->GetFont("arial20px"), "Confirm");
 	cb->SetRenderTextType(2);
 	cb->SetColor(70, 30, 70, 255);
 	Adjust(cb);
+	outInPanel = 1;
 
 }
 
 void ProgramScene::HideOutputSubPanel() {
 	currentSection.Clear();
+	outInPanel = 0;
+}
+
+void ProgramScene::CreateInputSubPanel() {
+	currentSection.Clear();
+	Button* btn = ui->CreateButton("outBtnBack", 100, 100, 150, 150, nullptr, ui->GetFont("arial20px"), "OutputOptions", 1.0f, 0, 10);
+	btn->SetRenderTextType(4);
+	btn->SetColor(50, 30, 50, 255);
+	btn->SetBorder(2, 100, 100, 255);
+	currentSection.Add(btn);
+
+	auto Adjust = [&](ClickBox* cb) {
+		cb->SetBorder(1, 100, 100, 255);
+		cb->SetHoverFilter(true, 255, 255, 255, 120, "hoverSound");
+		currentSection.Add(cb);
+		};
+
+	ClickBox* cb = ui->CreateClickBoxF("loadJson", 120, 160, 60, 60, nullptr, "arial12px", "Load Json", 1.0f, 0, -15);
+	cb->SetRenderTextType(4);
+	cb->SetColor(255, 0, 0, 255);
+	Adjust(cb);
+	outInPanel = 2;
+}
+
+void ProgramScene::HideInputSubPanel() {
+	currentSection.Clear();
+	outInPanel = 0;
 }
