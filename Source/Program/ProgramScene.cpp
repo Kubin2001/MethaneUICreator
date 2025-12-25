@@ -112,33 +112,26 @@ void ProgramScene::FrameUpdate(){
 		UIElemBase* btn = editedButton->btn;
 		if (editPanelState == 1) {
 			if (editedButton->btn != nullptr) {
-
-				if (ui->GetClickBox("XAxisToogle")->ConsumeStatus()) {
-					if (editedButton->xAxisBlock) {
-						editedButton->xAxisBlock = false;
-						ui->GetClickBox("XAxisToogle")->SetColor(0, 100, 200, 0);
+				auto ToogleHelper = [&](const std::string& name, bool& flag) {
+					if (ui->ConsumeIfExist(name)) {
+						if (flag) {
+							flag = false;
+							ui->GetClickBox(name)->SetColor(255, 0, 0);
+						}
+						else {
+							flag = true;
+							ui->GetClickBox(name)->SetColor(0, 100, 200, 255);
+						}
 					}
-					else {
-						editedButton->xAxisBlock = true;
-						ui->GetClickBox("XAxisToogle")->SetColor(0, 100, 200, 255);
-					}
-
-				}
-				if (ui->GetClickBox("YAxisToogle")->ConsumeStatus()) {
-					if (editedButton->yAxisBlock) {
-						editedButton->yAxisBlock = false;
-						ui->GetClickBox("YAxisToogle")->SetColor(0, 100, 200, 0);
-					}
-					else {
-						editedButton->yAxisBlock = true;
-						ui->GetClickBox("YAxisToogle")->SetColor(0, 100, 200, 255);
-					}
-				}
+				};
+				ToogleHelper("XAxisToogle", editedButton->xAxisBlock);
+				ToogleHelper("YAxisToogle", editedButton->xAxisBlock);
+				ToogleHelper("WidthOrientation", editedButton->widthOrientation);
+				ToogleHelper("HeightOrientation", editedButton->heightOrientation);
 			}
 			else {
 				std::println("Edited is null");
 			}
-
 		}
 
 		if (ui->GetClickBox("KeyUpdateAll")->ConsumeStatus()) {
@@ -153,6 +146,10 @@ void ProgramScene::FrameUpdate(){
 				ui->GetClickBox("XAxisToogle")->Show();
 				ui->GetClickBox("YAxisToogle")->TurnOn();
 				ui->GetClickBox("YAxisToogle")->Show();
+				ui->GetClickBox("WidthOrientation")->TurnOn();
+				ui->GetClickBox("WidthOrientation")->Show();
+				ui->GetClickBox("HeightOrientation")->TurnOn();
+				ui->GetClickBox("HeightOrientation")->Show();
 				for (auto& it : editClickRef) {
 					it->Hide();
 					it->TurnOff();
@@ -169,6 +166,10 @@ void ProgramScene::FrameUpdate(){
 				ui->GetClickBox("XAxisToogle")->TurnOff();
 				ui->GetClickBox("YAxisToogle")->Hide();
 				ui->GetClickBox("YAxisToogle")->TurnOff();
+				ui->GetClickBox("WidthOrientation")->Hide();
+				ui->GetClickBox("WidthOrientation")->TurnOff();
+				ui->GetClickBox("HeightOrientation")->Hide();
+				ui->GetClickBox("HeightOrientation")->TurnOff();
 				for (auto& it : editClickRef) {
 					it->Show();
 					it->TurnOn();
@@ -188,13 +189,25 @@ void ProgramScene::FrameUpdate(){
 		else if (ui->GetClickBox("KeyEditX")->ConsumeStatus()) {
 			int val = 0;
 			if (ArgToInt(ui->GetTextBox("KeyEditXtb")->GetText(), val)) {
-				btn->GetRectangle().x = val;
+				if (editedButton->widthOrientation) {
+					btn->GetRectangle().x = Global::windowWidth - val;
+				}
+				else {
+					btn->GetRectangle().x = val;
+				}
+
 			}
 		}
 		else if (ui->GetClickBox("KeyEditY")->ConsumeStatus()) {
 			int val = 0;
 			if (ArgToInt(ui->GetTextBox("KeyEditYtb")->GetText(), val)) {
 				btn->GetRectangle().y = val;
+				if (editedButton->heightOrientation) {
+					btn->GetRectangle().y = Global::windowHeight - val;
+				}
+				else {
+					btn->GetRectangle().y = val;
+				}
 			}
 		}
 		else if (ui->GetClickBox("KeyEditW")->ConsumeStatus()) {
@@ -653,22 +666,32 @@ void ProgramScene::ShowEditPanel(CreatedElement *button) {
 	CreateTripleEditBox("KeyFontColor", y, "Font Color", std::to_string(fontColor.R),
 		std::to_string(fontColor.G), std::to_string(fontColor.B));
 
+	// Additional Settings
+	auto setDefault = [](ClickBox* cb) {
+		cb->SetColor(255, 0, 0);
+		cb->TurnOff();
+		cb->SetTextStartX(-100);
+		cb->SetTextStartY(10);
+		cb->Hide();
+		//cb->SetRenderType(2);
+	};
 
-	currentSection.Add(ui->CreateClickBoxF("XAxisToogle",Global::windowWidth -100,100,30,30,nullptr,"arial12px"));
-	currentSection.GetClickBoxes().back()->SetBorder(1, 0, 100, 200);
-	currentSection.GetClickBoxes().back()->SetColor(255, 255, 255, 0);
-	currentSection.GetClickBoxes().back()->TurnOff();
-	currentSection.GetClickBoxes().back()->SetText("X Axis Block");
-	currentSection.GetClickBoxes().back()->SetTextStartX(-80);
-	currentSection.GetClickBoxes().back()->SetTextStartY(10);
-	currentSection.GetClickBoxes().back()->Hide();
-	currentSection.Add(ui->CreateClickBoxF("YAxisToogle", Global::windowWidth - 100, 150, 30, 30, nullptr, "arial12px"));
-	currentSection.GetClickBoxes().back()->SetBorder(1, 0, 100, 200);
-	currentSection.GetClickBoxes().back()->SetColor(255, 255, 255, 0);
-	currentSection.GetClickBoxes().back()->Hide();
-	currentSection.GetClickBoxes().back()->SetText("Y Axis Block");
-	currentSection.GetClickBoxes().back()->SetTextStartX(-80);
-	currentSection.GetClickBoxes().back()->SetTextStartY(10);
+	currentSection.Add(ui->CreateClickBoxF("XAxisToogle",Global::windowWidth -100,100,30,30,nullptr,"arial12px", "X Axis Block"));
+	cb = currentSection.GetClickBoxes().back();
+	setDefault(cb);
+
+	currentSection.Add(ui->CreateClickBoxF("YAxisToogle", Global::windowWidth - 100, 150, 30, 30, nullptr, "arial12px", "Y Axis Block"));
+	cb = currentSection.GetClickBoxes().back();
+	setDefault(cb);
+
+	currentSection.Add(ui->CreateClickBoxF("WidthOrientation", Global::windowWidth - 100, 200, 30, 30, nullptr, "arial12px", "Width Relative"));
+	cb = currentSection.GetClickBoxes().back();
+	setDefault(cb);
+
+	currentSection.Add(ui->CreateClickBoxF("HeightOrientation", Global::windowWidth - 100, 250, 30, 30, nullptr, "arial12px", "Heigth Relative"));
+	cb = currentSection.GetClickBoxes().back();
+	setDefault(cb);
+
 	editPanelState = 0;
 	panelType = 2;
 }
