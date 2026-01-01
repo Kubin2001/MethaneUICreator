@@ -7,7 +7,6 @@
 #include "GlobalVariables.h"
 
 //UIElemBase
-
 std::string& UIElemBase::GetName() {
 	return name;
 }
@@ -49,10 +48,6 @@ void UIElemBase::SetFont(Font* font) {
 	this->font = font;
 }
 
-void UIElemBase::SetBorder(bool temp) {
-	border = temp;
-}
-
 int UIElemBase::GetBorderThickness() {
 	return borderThickness;
 }
@@ -62,12 +57,13 @@ void UIElemBase::SetBorderThickness(const int temp) {
 	border = true;
 }
 
-void UIElemBase::SetBorder(const int width, const unsigned char R, const unsigned char G, const unsigned char B) {
+void UIElemBase::SetBorder(const int width, const unsigned char R, const unsigned char G, const unsigned char B, const unsigned char A) {
 	border = true;
 	borderThickness = width;
 	borderRGB.R = R;
 	borderRGB.G = G;
 	borderRGB.B = B;
+	borderRGB.A = A;
 }
 
 int UIElemBase::GetTextStartX() {
@@ -91,18 +87,20 @@ void UIElemBase::SetColor(const unsigned char R, const unsigned char G, const un
 }
 
 
-void UIElemBase::SetBorderRGB(const unsigned char R, const unsigned char G, const unsigned char B) {
+void UIElemBase::SetBorderColor(const unsigned char R, const unsigned char G, const unsigned char B, const unsigned char A) {
 	borderRGB.R = R;
 	borderRGB.G = G;
 	borderRGB.B = B;
+	borderRGB.A = A;
 }
 
-void UIElemBase::SetFontColor(const unsigned char R, const unsigned char G, const unsigned char B) {
+void UIElemBase::SetFontColor(const unsigned char R, const unsigned char G, const unsigned char B, const unsigned char A) {
 	if (font != nullptr) {
 		if (font->GetTexture() != nullptr) {
 			fontRGB.R = R;
 			fontRGB.G = G;
 			fontRGB.B = B;
+			fontRGB.A = A;
 		}
 	}
 }
@@ -110,22 +108,14 @@ void UIElemBase::SetFontColor(const unsigned char R, const unsigned char G, cons
 void UIElemBase::Render(UIElemBase* elem, MT::Renderer* renderer) {
 	if (!elem->hidden) {
 		if (elem->GetTexture() == nullptr) {
-			elem->RenderItslelf(renderer);
+			renderer->RenderRectUPR(elem->rectangle, { elem->buttonColor.R, elem->buttonColor.G, elem->buttonColor.B }, elem->buttonColor.A);
 		}
 		else {
 			renderer->RenderCopyUPR(elem->rectangle, elem->texture);
-			if (elem->GetBorder()) {
-				MT::Rect& rect = elem->rectangle;
-				MT::Rect leftLine{ rect.x, rect.y, elem->borderThickness, rect.h };
-				MT::Rect upperLine{ rect.x, rect.y, rect.w, elem->borderThickness };
-				MT::Rect rightLine{ (rect.x + rect.w - elem->borderThickness), rect.y, elem->borderThickness, rect.h };
-				MT::Rect downLine{ rect.x, (rect.y + rect.h - elem->borderThickness), rect.w, elem->borderThickness };
-
-				renderer->RenderRectUPR(leftLine, { elem->borderRGB.R, elem->borderRGB.G, elem->borderRGB.B });
-				renderer->RenderRectUPR(upperLine, { elem->borderRGB.R, elem->borderRGB.G, elem->borderRGB.B });
-				renderer->RenderRectUPR(rightLine, { elem->borderRGB.R, elem->borderRGB.G, elem->borderRGB.B });
-				renderer->RenderRectUPR(downLine, { elem->borderRGB.R, elem->borderRGB.G, elem->borderRGB.B });
-			}
+		}
+		if (elem->GetBorder()) {
+			renderer->RenderBorderUPR(elem->rectangle, { elem->borderRGB.R, elem->borderRGB.G, elem->borderRGB.B }
+			,elem->borderThickness, elem->borderRGB.A);
 		}
 		if (elem->hovered && elem->hoverable) {
 			renderer->RenderRectUPR(elem->rectangle,
@@ -137,7 +127,16 @@ void UIElemBase::Render(UIElemBase* elem, MT::Renderer* renderer) {
 
 void UIElemBase::RenderRounded(UIElemBase* elem, MT::Renderer* renderer) {
 	if (!elem->hidden) {
-		elem->RenderItslelfRounded(renderer);
+		if (elem->GetTexture() == nullptr) {
+			renderer->RenderRoundedRectUPR(elem->rectangle, { elem->buttonColor.R, elem->buttonColor.G, elem->buttonColor.B }, elem->buttonColor.A);
+		}
+		else {
+			renderer->RenderCopyRoundedUPR(elem->rectangle, elem->texture);
+		}
+		if (elem->GetBorder()) {
+			renderer->RenderRoundedBorderUPR(elem->rectangle, { elem->borderRGB.R, elem->borderRGB.G, elem->borderRGB.B }
+			, elem->borderThickness, elem->borderRGB.A);
+		}
 		if (elem->hovered && elem->hoverable) {
 			renderer->RenderRoundedRectUPR(elem->rectangle,
 				{ elem->hoverFilter.R, elem->hoverFilter.G, elem->hoverFilter.B }, elem->hoverFilter.A);
@@ -146,100 +145,33 @@ void UIElemBase::RenderRounded(UIElemBase* elem, MT::Renderer* renderer) {
 	}
 }
 
-void UIElemBase::RenderItslelf(MT::Renderer* renderer) {
-	if (!border) {
-		renderer->RenderRectUPR(rectangle, { buttonColor.R, buttonColor.G, buttonColor.B }, buttonColor.A);
-	}
-	else {
-		MT::Rect newBtnRect = rectangle;
-		int width = 0;
-		if (borderThickness % 2 == 0) {
-			width = borderThickness / 2;
-		}
-		else {
-			width = (borderThickness / 2) + 1;
-		}
-		newBtnRect.x += borderThickness;
-		newBtnRect.y += borderThickness;
-		newBtnRect.w -= borderThickness * 2;
-		newBtnRect.h -= borderThickness * 2;
-		renderer->RenderRectUPR(rectangle, { borderRGB.R, borderRGB.G, borderRGB.B }, 255);
-		renderer->RenderRectUPR(newBtnRect, { buttonColor.R, buttonColor.G, buttonColor.B }, buttonColor.A);
-	}
-}
-
-void UIElemBase::RenderItslelfRounded(MT::Renderer* renderer) {
-	if (texture == nullptr) {
-		if (!border) {
-			renderer->RenderRoundedRectUPR(rectangle, { buttonColor.R, buttonColor.G, buttonColor.B }, buttonColor.A);
-		}
-		else {
-			MT::Rect newBtnRect = rectangle;
-			int width = 0;
-			if (borderThickness % 2 == 0) {
-				width = borderThickness / 2;
-			}
-			else {
-				width = (borderThickness / 2) + 1;
-			}
-			newBtnRect.x += borderThickness;
-			newBtnRect.y += borderThickness;
-			newBtnRect.w -= borderThickness * 2;
-			newBtnRect.h -= borderThickness * 2;
-			renderer->RenderRoundedRectUPR(rectangle, { borderRGB.R, borderRGB.G, borderRGB.B }, 255);
-			renderer->RenderRoundedRectUPR(newBtnRect, { buttonColor.R, buttonColor.G, buttonColor.B }, buttonColor.A);
-		}
-	}
-	else {
-		if (!border) {
-			renderer->RenderCopyRoundedRectUPR(rectangle, texture);
-		}
-		else {
-			MT::Rect newBtnRect = rectangle;
-			int width = 0;
-			if (borderThickness % 2 == 0) {
-				width = borderThickness / 2;
-			}
-			else {
-				width = (borderThickness / 2) + 1;
-			}
-			newBtnRect.x += borderThickness;
-			newBtnRect.y += borderThickness;
-			newBtnRect.w -= borderThickness * 2;
-			newBtnRect.h -= borderThickness * 2;
-			renderer->RenderRoundedRectUPR(rectangle, { borderRGB.R, borderRGB.G, borderRGB.B }, 255);
-			renderer->RenderCopyRoundedRectUPR(newBtnRect, texture);
-		}
-	}
-
-}
-
 
 void UIElemBase::RenderText(MT::Renderer* renderer) {
-	if (font != nullptr) {
-		if (text.empty()) { return; }
-		font->SetFilter(fontRGB.R, fontRGB.G, fontRGB.B);
-		switch (textRenderType) {
-			case 1:
-				font->RenderText(renderer, text, rectangle, textScale, interLine, textStartX, textStartY);
-				break;
-			case 2:
-				font->RenderTextCenter(renderer, text, rectangle, textScale, interLine, textStartX, textStartY);
-				break;
-			case 3:
-				font->RenderTextFromRight(renderer, text, rectangle, textScale, interLine, textStartX, textStartY);
-				break;
-			case 4:
-				font->RenderTextCenterX(renderer, text, rectangle, textScale, interLine, textStartX, textStartY);
-				break;
-			case 5:
-				font->RenderTextCenterY(renderer, text, rectangle, textScale, interLine, textStartX, textStartY);
-				break;
-			default: // Standardowa opcja
-				font->RenderText(renderer, text, rectangle, textScale, interLine, textStartX, textStartY);
-				break;
-		}
+	if (font == nullptr || font->GetTexture() == nullptr || text.empty()) { return; }
+
+	font->SetFilter(fontRGB.R, fontRGB.G, fontRGB.B);
+	font->GetTexture()->SetAlphaBending(fontRGB.A);
+	switch (textRenderType) {
+		case 1:
+			font->RenderText(renderer, text, rectangle, textScale, interLine, textStartX, textStartY);
+			break;
+		case 2:
+			font->RenderTextCenter(renderer, text, rectangle, textScale, interLine, textStartX, textStartY);
+			break;
+		case 3:
+			font->RenderTextFromRight(renderer, text, rectangle, textScale, interLine, textStartX, textStartY);
+			break;
+		case 4:
+			font->RenderTextCenterX(renderer, text, rectangle, textScale, interLine, textStartX, textStartY);
+			break;
+		case 5:
+			font->RenderTextCenterY(renderer, text, rectangle, textScale, interLine, textStartX, textStartY);
+			break;
+		default: // Standardowa opcja
+			font->RenderText(renderer, text, rectangle, textScale, interLine, textStartX, textStartY);
+			break;
 	}
+	font->GetTexture()->SetAlphaBending(255);
 }
 
 void UIElemBase::SetRenderType(const unsigned int renderType) {
@@ -451,7 +383,7 @@ void UI::RenderRawText(Font* font, const int x, const int y, const std::string& 
 }
 
 Button* UI::CreateButton(const std::string& name, int x, int y, int w, int h, MT::Texture* texture, Font* font,
-	const std::string& text, float textScale, int textStartX, int textStartY, int borderThickness) {
+	const std::string& text, float textScale, int textStartX, int textStartY) {
 
 	if (GetButton(name) != nullptr) {
 		std::cout << "Warning name collision Button with name: " << name << " already exists addition abborted\n";
@@ -460,6 +392,7 @@ Button* UI::CreateButton(const std::string& name, int x, int y, int w, int h, MT
 
 	Buttons.emplace_back(new Button());
 	Button* btn = Buttons.back();
+	btn->castType = (int)CastType::Button;
 	btn->name = name;
 	btn->GetRectangle().Set(x, y, w, h);
 	btn->SetRenderType(1);
@@ -476,17 +409,12 @@ Button* UI::CreateButton(const std::string& name, int x, int y, int w, int h, MT
 	btn->SetTextStartX(textStartX);
 	btn->SetTextStartY(textStartY);
 
-	if (borderThickness > 0) {
-		btn->SetBorderThickness(borderThickness);
-		btn->SetBorder(true);
-	}
-
 	UIElemMap.emplace(btn->GetName(), btn);
 	return btn;
 }
 
 TextBox* UI::CreateTextBox(const std::string& name, int x, int y, int w, int h, MT::Texture* texture, Font* font,
-	const std::string& text, float textScale, int textStartX, int textStartY, int borderThickness) {
+	const std::string& text, float textScale, int textStartX, int textStartY) {
 
 	if (GetTextBox(name) != nullptr) {
 		std::cout << "Warning name collision TextBox with name: " << name << " already exists addition abborted\n";
@@ -495,6 +423,7 @@ TextBox* UI::CreateTextBox(const std::string& name, int x, int y, int w, int h, 
 
 	TextBoxes.emplace_back(new TextBox());
 	TextBox* tb = TextBoxes.back();
+	tb->castType = (int)CastType::TextBox;
 	tb->name = name;
 	tb->GetRectangle().Set(x, y, w, h);
 	tb->SetRenderType(1);
@@ -512,18 +441,12 @@ TextBox* UI::CreateTextBox(const std::string& name, int x, int y, int w, int h, 
 	tb->SetTextStartX(textStartX);
 	tb->SetTextStartY(textStartY);
 
-
-	if (borderThickness > 0) {
-		tb->SetBorderThickness(borderThickness);
-		tb->SetBorder(true);
-	}
-
 	UIElemMap.emplace(tb->GetName(), tb);
 	return tb;
 }
 
 ClickBox* UI::CreateClickBox(const std::string& name, int x, int y, int w, int h, MT::Texture* texture, Font* font,
-	const std::string& text, float textScale, int textStartX, int textStartY, int borderThickness) {
+	const std::string& text, float textScale, int textStartX, int textStartY) {
 
 	if (GetClickBox(name) != nullptr) {
 		std::cout << "Warning name collision click box with name: " << name << " already exists addition abborted\n";
@@ -532,6 +455,7 @@ ClickBox* UI::CreateClickBox(const std::string& name, int x, int y, int w, int h
 
 	ClickBoxes.emplace_back(new ClickBox());
 	ClickBox* cb = ClickBoxes.back();
+	cb->castType = (int)CastType::ClickBox;
 	cb->name = name;
 	cb->GetRectangle().Set(x, y, w, h);
 	cb->SetRenderType(1);
@@ -549,17 +473,12 @@ ClickBox* UI::CreateClickBox(const std::string& name, int x, int y, int w, int h
 	cb->SetTextStartX(textStartX);
 	cb->SetTextStartY(textStartY);
 
-	if (borderThickness > 0) {
-		cb->SetBorderThickness(borderThickness);
-		cb->SetBorder(true);
-	}
-
 	UIElemMap.emplace(cb->GetName(), cb);
 	return cb;
 }
 
 PopUpBox* UI::CreatePopUpBox(const std::string& name, int lifeSpan, int x, int y, int w, int h, MT::Texture* texture, Font* font,
-	const std::string& text, float textScale, int textStartX, int textStartY, int borderThickness) {
+	const std::string& text, float textScale, int textStartX, int textStartY) {
 	if (GetPopUpBox(name) != nullptr) {
 		std::cout << "Warning name collision PopUpBox with name: " << name << " already exists addition abborted\n";
 		return nullptr;
@@ -567,6 +486,7 @@ PopUpBox* UI::CreatePopUpBox(const std::string& name, int lifeSpan, int x, int y
 
 	PopUpBoxes.emplace_back(new PopUpBox());
 	PopUpBox* pb = PopUpBoxes.back();
+	pb->castType = (int)CastType::PopUpBox;
 	pb->name = name;
 	pb->SetLifeTime(lifeSpan);
 	pb->GetRectangle().Set(x, y, w, h);
@@ -585,33 +505,28 @@ PopUpBox* UI::CreatePopUpBox(const std::string& name, int lifeSpan, int x, int y
 	pb->SetTextStartX(textStartX);
 	pb->SetTextStartY(textStartY);
 
-	if (borderThickness > 0) {
-		pb->SetBorderThickness(borderThickness);
-		pb->SetBorder(true);
-	}
-
 	UIElemMap.emplace(pb->GetName(), pb);
 	return pb;
 }
 
 Button* UI::CreateButtonF(const std::string& name, int x, int y, int w, int h, MT::Texture* texture, const std::string& fontSt,
-	const std::string& text, float textScale, int textStartX, int textStartY, int borderThickness) {
-	return CreateButton(name, x, y, w, h, texture, GetFont(fontSt), text, textScale, textStartX, textStartY, borderThickness);
+	const std::string& text, float textScale, int textStartX, int textStartY) {
+	return CreateButton(name, x, y, w, h, texture, GetFont(fontSt), text, textScale, textStartX, textStartY);
 }
 
 TextBox* UI::CreateTextBoxF(const std::string& name, int x, int y, int w, int h, MT::Texture* texture, const std::string& fontSt,
-	const std::string& text, float textScale, int textStartX, int textStartY, int borderThickness) {
-	return CreateTextBox(name, x, y, w, h, texture, GetFont(fontSt), text, textScale, textStartX, textStartY, borderThickness);
+	const std::string& text, float textScale, int textStartX, int textStartY) {
+	return CreateTextBox(name, x, y, w, h, texture, GetFont(fontSt), text, textScale, textStartX, textStartY);
 }
 
 ClickBox* UI::CreateClickBoxF(const std::string& name, int x, int y, int w, int h, MT::Texture* texture, const std::string& fontSt,
-	const std::string& text, float textScale, int textStartX, int textStartY, int borderThickness) {
-	return CreateClickBox(name, x, y, w, h, texture, GetFont(fontSt), text, textScale, textStartX, textStartY, borderThickness);
+	const std::string& text, float textScale, int textStartX, int textStartY) {
+	return CreateClickBox(name, x, y, w, h, texture, GetFont(fontSt), text, textScale, textStartX, textStartY);
 }
 
 PopUpBox* UI::CreatePopUpBoxF(const std::string& name, int lifeSpan, int x, int y, int w, int h, MT::Texture* texture, const std::string& fontSt,
-	const std::string& text, float textScale, int textStartX, int textStartY, int borderThickness) {
-	return CreatePopUpBox(name, lifeSpan, x, y, w, h, texture, GetFont(fontSt), text, textScale, textStartX, textStartY, borderThickness);
+	const std::string& text, float textScale, int textStartX, int textStartY) {
+	return CreatePopUpBox(name, lifeSpan, x, y, w, h, texture, GetFont(fontSt), text, textScale, textStartX, textStartY);
 }
 
 bool UI::RenameElem(const std::string& name, const std::string& newName) {
@@ -705,108 +620,87 @@ void UI::CheckClickBoxes(SDL_Event& event) {
 	}
 }
 
-
-
 Button* UI::GetButton(const std::string& name) {
-	return UIGetElem<Button>(name);
+	auto iter = UIElemMap.find(name);
+	if (iter == UIElemMap.end()) {
+		return nullptr;
+	}
+	UIElemBase* elem = iter->second;
+	if (elem->castType == (int)CastType::Button) {
+		return static_cast<Button*>(elem);
+	}
+	return nullptr;
 }
 TextBox* UI::GetTextBox(const std::string& name) {
-	return UIGetElem<TextBox>(name);
+	auto iter = UIElemMap.find(name);
+	if (iter == UIElemMap.end()) {
+		return nullptr;
+	}
+	UIElemBase* elem = iter->second;
+	if (elem->castType == (int)CastType::TextBox) {
+		return static_cast<TextBox*>(elem);
+	}
+	return nullptr;
 }
 ClickBox* UI::GetClickBox(const std::string& name) {
-	return UIGetElem<ClickBox>(name);
+	auto iter = UIElemMap.find(name);
+	if (iter == UIElemMap.end()) {
+		return nullptr;
+	}
+	UIElemBase* elem = iter->second;
+	if (elem->castType == (int)CastType::ClickBox) {
+		return static_cast<ClickBox*>(elem);
+	}
+	return nullptr;
 }
 
 PopUpBox* UI::GetPopUpBox(const std::string& name) {
-	return UIGetElem<PopUpBox>(name);
+	auto iter = UIElemMap.find(name);
+	if (iter == UIElemMap.end()) {
+		return nullptr;
+	}
+	UIElemBase* elem = iter->second;
+	if (elem->castType == (int)CastType::PopUpBox) {
+		return static_cast<PopUpBox*>(elem);
+	}
+	return nullptr;
 }
 
 bool UI::ConsumeIfExist(const std::string& name) {
-	ClickBox* cb = UIGetElem<ClickBox>(name);
+	ClickBox* cb = GetClickBox(name);
 	if (cb == nullptr) { return false; }
 	return cb->ConsumeStatus();
 }
 
 void UI::SetElementColor(const std::string& name, const unsigned char R, const unsigned char G, const unsigned char B) {
-	Button* button = GetButton(name);
-	if (button != nullptr) {
-		button->SetColor(R, G, B);
+	auto iter = UIElemMap.find(name);
+	if (iter == UIElemMap.end()) {
 		return;
 	}
-
-	TextBox* textBox = GetTextBox(name);
-	if (textBox != nullptr) {
-		textBox->SetColor(R, G, B);
-		return;
-	}
-
-	ClickBox* clickBox = GetClickBox(name);
-	if (clickBox != nullptr) {
-		clickBox->SetColor(R, G, B);
-		return;
-	}
-	PopUpBox* popUpBox = GetPopUpBox(name);
-	if (popUpBox != nullptr) {
-		popUpBox->SetColor(R, G, B);
-		return;
-	}
+	iter->second->SetColor(R, G, B);
 }
 
 void UI::SetElementBorderColor(const std::string& name, const unsigned char R, const unsigned char G, const unsigned char B) {
-	Button* button = GetButton(name);
-	if (button != nullptr) {
-		button->SetBorderRGB(R, G, B);
+	auto iter = UIElemMap.find(name);
+	if (iter == UIElemMap.end()) {
 		return;
 	}
-
-	TextBox* textBox = GetTextBox(name);
-	if (textBox != nullptr) {
-		textBox->SetBorderRGB(R, G, B);
-		return;
-	}
-
-	ClickBox* clickBox = GetClickBox(name);
-	if (clickBox != nullptr) {
-		clickBox->SetBorderRGB(R, G, B);
-		return;
-	}
-	PopUpBox* popUpBox = GetPopUpBox(name);
-	if (popUpBox != nullptr) {
-		popUpBox->SetBorderRGB(R, G, B);
-		return;
-	}
+	iter->second->SetBorderColor(R, G, B);
 }
 
 void UI::SetElementFontColor(const std::string& name, const unsigned char R, const unsigned char G, const unsigned char B) {
-	Button* button = GetButton(name);
-	if (button != nullptr) {
-		button->SetFontColor(R, G, B);
+	auto iter = UIElemMap.find(name);
+	if (iter == UIElemMap.end()) {
 		return;
 	}
-
-	TextBox* textBox = GetTextBox(name);
-	if (textBox != nullptr) {
-		textBox->SetFontColor(R, G, B);
-		return;
-	}
-
-	ClickBox* clickBox = GetClickBox(name);
-	if (clickBox != nullptr) {
-		clickBox->SetFontColor(R, G, B);
-		return;
-	}
-	PopUpBox* popUpBox = GetPopUpBox(name);
-	if (popUpBox != nullptr) {
-		popUpBox->SetFontColor(R, G, B);
-		return;
-	}
+	iter->second->SetFontColor(R, G, B);
 }
 
 void UI::FrameUpdate() {
 	for (auto it = PopUpBoxes.begin(); it != PopUpBoxes.end();) {
 		(*it)->lifeTime--;
 		if ((*it)->lifeTime < 1) {
-			DeletePopUpBox((*it)->name);
+			DeleteElement((*it)->name);
 			return;
 		}
 		else {
@@ -828,75 +722,63 @@ void UI::ManageInput(SDL_Event& event) {
 }
 
 
-bool UI::DeleteButton(const std::string& name) {
+bool UI::DeleteElement(const std::string& name) {
+	auto elemIter = UIElemMap.find(name);
+	if (elemIter == UIElemMap.end()) { return false; }
 
-	UIElemMap.erase(name);
-	for (size_t i = 0; i < Buttons.size(); i++){
-		if (Buttons[i]->GetName() == name) {
-			delete Buttons[i];
-			Buttons.erase(Buttons.begin() + i);
-			return true;
-		}
+	switch (elemIter->second->castType) {
+		case (int)CastType::Button:
+			if (!DeleteButton(static_cast<Button*>(elemIter->second))) {return false;}
+			break;
+		case (int)CastType::ClickBox:
+			if (!DeleteClickBox(static_cast<ClickBox*>(elemIter->second))) { return false; }
+			break;
+		case (int)CastType::TextBox:
+			if (!DeleteTextBox(static_cast<TextBox*>(elemIter->second))) { return false; }
+			break;
+		case (int)CastType::PopUpBox:
+			if (!DeletePopUpBox(static_cast<PopUpBox*>(elemIter->second))) { return false; }
+			break;
 	}
-	return false;
+	UIElemMap.erase(elemIter);
+	return true;
 }
 
-bool UI::DeleteTextBox(const std::string& name) {
-	UIElemMap.erase(name);
-	for (size_t i = 0; i < TextBoxes.size(); i++){
-		if (TextBoxes[i]->GetName() == name) {
-			delete TextBoxes[i];
-			TextBoxes.erase(TextBoxes.begin() + i);
-			return true;
-		}
-	}
-	return false;
-}
-
-bool UI::DeleteClickBox(const std::string& name) {
-	UIElemMap.erase(name);
-	for (size_t i = 0; i < ClickBoxes.size(); i++){
-		if (ClickBoxes[i]->GetName() == name) {
-			delete ClickBoxes[i];
-			ClickBoxes.erase(ClickBoxes.begin() + i);
-			return true;
-		}
-	}
-	return false;
-}
-
-bool UI::DeletePopUpBox(const std::string& name) {
-	UIElemMap.erase(name);
-	for (size_t i = 0; i < PopUpBoxes.size(); i++) {
-		if (PopUpBoxes[i]->GetName() == name) {
-			delete PopUpBoxes[i];
-			PopUpBoxes.erase(PopUpBoxes.begin() + i);
-			return true;
-		}
-	}
-	return false;
-}
-
-bool UI::DeleteAnyElem(const std::string& name) {
-	auto elemMap = UIElemMap.find(name);
-	if (elemMap == UIElemMap.end()) {
-		return false;
-	}
-	UIElemBase* uiElemBase = elemMap->second;
-	if (dynamic_cast<Button*>(uiElemBase) != nullptr) {
-		DeleteButton(name);
+bool UI::DeleteButton(Button* btn) {
+	auto vecIter = std::find(Buttons.begin(), Buttons.end(),btn);
+	if (vecIter != Buttons.end()) {
+		delete *vecIter;
+		Buttons.erase(vecIter);
 		return true;
 	}
-	if (dynamic_cast<TextBox*>(uiElemBase) != nullptr) {
-		DeleteTextBox(name);
+	return false;
+}
+
+bool UI::DeleteTextBox(TextBox* tb) {
+	auto vecIter = std::find(TextBoxes.begin(), TextBoxes.end(), tb);
+	if (vecIter != TextBoxes.end()) {
+		delete* vecIter;
+		TextBoxes.erase(vecIter);
 		return true;
 	}
-	if (dynamic_cast<ClickBox*>(uiElemBase) != nullptr) {
-		DeleteClickBox(name);
+	return false;
+}
+
+bool UI::DeleteClickBox(ClickBox* cb) {
+	auto vecIter = std::find(ClickBoxes.begin(), ClickBoxes.end(), cb);
+	if (vecIter != ClickBoxes.end()) {
+		delete* vecIter;
+		ClickBoxes.erase(vecIter);
 		return true;
 	}
-	if (dynamic_cast<PopUpBox*>(uiElemBase) != nullptr) {
-		DeletePopUpBox(name);
+	return false;
+}
+
+bool UI::DeletePopUpBox(PopUpBox* pb) {
+	auto vecIter = std::find(PopUpBoxes.begin(), PopUpBoxes.end(), pb);
+	if (vecIter != PopUpBoxes.end()) {
+		delete* vecIter;
+		PopUpBoxes.erase(vecIter);
 		return true;
 	}
 	return false;

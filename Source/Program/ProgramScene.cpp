@@ -19,25 +19,17 @@ void CreateErrorBox(UI* ui, const std::string& text) {
 }
 
 void ProgramScene::Init(){
-	//EditorFunctions::CreateFunctions();
-
 	rightPanel = ui->CreateButton("Right Panel", Global::windowWidth - 300,0,300,Global::windowHeight);
 	rightPanel->SetColor(30, 30, 30);
 	rightPanel->SetBorder(2, 0, 100, 200);
 	rightPanel->Hide();
 
-	runButton = ui->CreateClickBox("RunCB",5,5,30,30,TexMan::GetTex("runBtn"));
-	runButton->SetBorder(1, 100, 100, 230);
-	runButton->SetHoverFilter(true, 255, 255, 255, 120);
 	currentSection.Init(ui);
 }
 
 void ProgramScene::LogicUpdate(){}
 
 void ProgramScene::FrameUpdate(){
-	if (runButton->ConsumeStatus()) {
-		ShowRunPanel();
-	}
 	if (btnCreateList.Main() != nullptr) {
 		if (btnCreateList.Main()->ConsumeStatus()) {
 			if (btnCreateList.IsExpanded()) {
@@ -50,19 +42,19 @@ void ProgramScene::FrameUpdate(){
 	}
 	if (btnCreateList.IsExpanded()) {
 		if (btnCreateList[0]->ConsumeStatus()) {
-			CreateNewElem(1);
+			CreateNewElem((int)CastType::Button);
 			return;
 		}
 		if (btnCreateList[1]->ConsumeStatus()) {
-			CreateNewElem(2);
+			CreateNewElem((int)CastType::ClickBox);
 			return;
 		}
 		if (btnCreateList[2]->ConsumeStatus()) {
-			CreateNewElem(3);
+			CreateNewElem((int)CastType::TextBox);
 			return;
 		}
 		if (btnCreateList[3]->ConsumeStatus()) {
-			CreateNewElem(4);
+			CreateNewElem((int)CastType::PopUpBox);
 			return;
 		}
 	}
@@ -315,8 +307,40 @@ void ProgramScene::FrameUpdate(){
 				btn->SetFontColor(argR, argG, argB);
 			}
 		}
-	}
+		else if (ui->GetClickBox("KeyFilter")->ConsumeStatus()) {
+			std::string& R = ui->GetTextBox("KeyFilter1")->GetText();
+			std::string& G = ui->GetTextBox("KeyFilter2")->GetText();
+			std::string& B = ui->GetTextBox("KeyFilter3")->GetText();
+			std::string& A = ui->GetTextBox("KeyFilter4")->GetText();
+			unsigned char argR = 0;
+			unsigned char argG = 0;
+			unsigned char argB = 0;
+			unsigned char argA = 0;
+			if (ArgToUCHar(R, argR) && ArgToUCHar(G, argG) && ArgToUCHar(B, argB) && ArgToUCHar(A, argA)) {
+				btn->SetHoverFilter(true, argR, argG, argB, argA);
+			}
+		}
 
+		if (btn->castType == (int)CastType::ClickBox) {
+			ClickBox* castedCB = static_cast<ClickBox*>(btn);
+			if (ui->ConsumeIfExist("KeyTurnedOn")) {
+				int val = castedCB->turnedOn;
+				if (ArgToInt(ui->GetTextBox("KeyTurnedOntb")->GetText(), val)) {
+					if (val) {
+						castedCB->TurnOn();
+					}
+					else {
+						castedCB->TurnOff();
+					}
+				}
+			}
+
+			if (ui->ConsumeIfExist("KeyClickSound")) {
+				std::string val = ui->GetTextBox("KeyClickSoundtb")->GetText();
+				castedCB->clickSound = val;
+			}
+		}
+	}
 		
 	if (ui->ConsumeIfExist("btnRefOpt")) {
 		outputType = 1;
@@ -410,7 +434,7 @@ void ProgramScene::Input(SDL_Event& event){
 				if (elem == selectedButton) {
 					selectedButton = nullptr;
 				}
-				ui->DeleteButton(elem->btn->GetName());
+				ui->DeleteElement(elem->btn->GetName());
 				std::erase_if(elements, [&](const CreatedElement& e) {return &e == elem;});
 			}
 		}
@@ -469,6 +493,34 @@ void ProgramScene::Input(SDL_Event& event){
 			}
 		}
 	}
+
+	if (event.type == SDL_MOUSEWHEEL) {
+		int wheelWal = event.wheel.y;
+		int scroolSpeed = 10;
+
+		if (panelType != 2 && editPanelState != 1) { return; }
+		if (wheelWal > 0) { // down
+			if (currentScrool > 0) { return; }
+			currentScrool += scroolSpeed;
+			for (auto& cb : editClickRef) {
+				cb->GetRectangle().y += scroolSpeed;
+			}
+			for (auto& tb : editTextRef) {
+				tb->GetRectangle().y += scroolSpeed;
+			}
+		}
+		else if (wheelWal < 0) { // up
+			if (currentScrool < -500) { return; }
+			currentScrool -= scroolSpeed;
+			for (auto& cb : editClickRef) {
+				cb->GetRectangle().y -= scroolSpeed;
+			}
+			for (auto& tb : editTextRef) {
+				tb->GetRectangle().y -= scroolSpeed;
+			}
+		}
+		//std::println("{}", currentScrool);
+	}
 }
 
 void ProgramScene::Render(){}
@@ -519,10 +571,10 @@ void ProgramScene::HidePanel() {
 	rightPanel->Hide();
 	btnCreateList.Clear();
 	for (auto& btn : editTextRef) {
-		ui->DeleteTextBox(btn->GetName());
+		ui->DeleteElement(btn->GetName());
 	}
 	for (auto& btn : editClickRef) {
-		ui->DeleteClickBox(btn->GetName());
+		ui->DeleteElement(btn->GetName());
 	}
 	editTextRef.clear();
 	editClickRef.clear();
@@ -602,7 +654,7 @@ void ProgramScene::CreateQuadEditBox(const std::string& name, int& y, const std:
 }
 
 void ProgramScene::ShowEditPanel(CreatedElement *button) {
-
+	currentScrool = 0;
 	if (panelType == 2) {
 		HideEditPanel(button);
 	}
@@ -657,14 +709,30 @@ void ProgramScene::ShowEditPanel(CreatedElement *button) {
 	CreateQuadEditBox("KeyColor", y, "Color", std::to_string(color.R),
 		std::to_string(color.G), std::to_string(color.B),std::to_string(color.A));
 
-	MT::Color borderRGB = ebBtn->borderRGB;
+	MT::ColorA borderRGBA = ebBtn->borderRGB;
 	CreateQuadEditBox("KeyBorder", y, "Border", std::to_string(ebBtn->borderThickness),
-		std::to_string(borderRGB.R), std::to_string(borderRGB.G),std::to_string(borderRGB.B));
+		std::to_string(borderRGBA.R), std::to_string(borderRGBA.G),std::to_string(borderRGBA.B));
 
-	MT::Color fontColor = ebBtn->fontRGB;
+	MT::ColorA fontColor = ebBtn->fontRGB;
 
 	CreateTripleEditBox("KeyFontColor", y, "Font Color", std::to_string(fontColor.R),
 		std::to_string(fontColor.G), std::to_string(fontColor.B));
+
+	MT::ColorA hooverFilter = ebBtn->hoverFilter;
+	CreateQuadEditBox("KeyFilter", y, "Filter", std::to_string(hooverFilter.R),
+		std::to_string(hooverFilter.G), std::to_string(hooverFilter.B), std::to_string(hooverFilter.A));
+
+
+
+	if (ebBtn->castType == (int)CastType::ClickBox) {
+		ClickBox *castedElem = static_cast<ClickBox*>(ebBtn);
+		bool turnedOn = castedElem->turnedOn;
+		CreateEditBox("KeyTurnedOn", y, "Turned On: ", std::to_string(turnedOn));
+
+		std::string clickSound = castedElem->clickSound;
+		CreateEditBox("KeyClickSound", y, "Click Sound: ", clickSound);
+	}
+ 
 
 	// Additional Settings
 	auto setDefault = [](ClickBox* cb) {
@@ -699,15 +767,15 @@ void ProgramScene::ShowEditPanel(CreatedElement *button) {
 void ProgramScene::HideEditPanel(CreatedElement* button) {
 	rightPanel->Hide();
 	for (auto& btn : editTextRef) {
-		ui->DeleteTextBox(btn->GetName());
+		ui->DeleteElement(btn->GetName());
 	}
 	for (auto& btn : editClickRef) {
-		ui->DeleteClickBox(btn->GetName());
+		ui->DeleteElement(btn->GetName());
 	}
 	editTextRef.clear();
 	editClickRef.clear();
-	ui->DeleteClickBox("KeyUpdateAll");
-	ui->DeleteClickBox("setingBtn");
+	ui->DeleteElement("KeyUpdateAll");
+	ui->DeleteElement("setingBtn");
 	editedButton = nullptr;
 	currentSection.Clear();
 	editPanelState = 0;
@@ -731,91 +799,41 @@ void ConvertElement(T* cBtn, UIElemBase* btn, UI *Ui) {
 	cBtn->SetFontColor(btn->fontRGB.R, btn->fontRGB.G, btn->fontRGB.B);
 }
 
-void ProgramScene::ShowRunPanel() {
-	if (panelType == 3) {
-		HideRunPanel();
-		return;
-	}
-	HidePanel();
-	HideEditPanel(editedButton);
-	runButton->SetTexture(TexMan::GetTex("pauseBtn"));
-
-	for (auto& it : elements) {
-		it.btn->Hide();
-		UIElemBase* btn = it.btn;
-		MT::Rect& rect = btn->GetRectangle();
-		switch(it.type){
-			case 1: {
-				Button* cBtn = ui->CreateButton(btn->name + "R", rect.x, rect.y, rect.w, rect.h);
-				ConvertElement(cBtn,btn,ui);
-				runBtnRef.emplace_back(cBtn);
-				break;
-			}
-
-			case 2: {
-				ClickBox* cBtn = ui->CreateClickBox(btn->name + "R", rect.x, rect.y, rect.w, rect.h);
-				ConvertElement(cBtn, btn, ui);
-				runClickRef.emplace_back(cBtn);
-				break;
-			}
-			case 3: {
-				TextBox* cBtn = ui->CreateTextBox(btn->name + "R", rect.x, rect.y, rect.w, rect.h);
-				ConvertElement(cBtn, btn, ui);
-				runTextRef.emplace_back(cBtn);
-				break;
-			}
-			case 4: {
-				PopUpBox* cBtn = ui->CreatePopUpBox(btn->name + "R", 120, rect.x, rect.y, rect.w, rect.h);
-				ConvertElement(cBtn, btn, ui);
-				runPopUpRef.emplace_back(cBtn);
-				break;
-			}
-		}
-	}
-
-	panelType = 3;
-}
-
-void ProgramScene::HideRunPanel() {
-	runButton->SetTexture(TexMan::GetTex("runBtn"));
-	for (auto& it : elements) {
-		it.btn->Show();
-	}
-	for (auto& it : runBtnRef) {
-		ui->DeleteAnyElem(it->GetName());
-	}
-	for (auto& it : runTextRef) {
-		ui->DeleteAnyElem(it->GetName());
-	}
-	for (auto& it : runClickRef) {
-		ui->DeleteAnyElem(it->GetName());
-
-	}
-	for (auto& it : runPopUpRef) {
-		ui->DeleteAnyElem(it->GetName());
-	}
-	panelType = 0;
-}
-
 void ProgramScene::CreateNewElem(const int type) {
 	if (selectedButton != nullptr) { return; }
 	index++;
-	int x, y;
-	SDL_GetMouseState(&x, &y);
-	elements.emplace_back(ui->CreateButton("btn" + std::to_string(index), x - 50, y - 50, 100, 100), type);
+	Point p = GetMousePos();
+
+	std::string name  = "btn" + std::to_string(index);
+
+	switch (type) {
+		case (int)CastType::Button:
+			elements.emplace_back(ui->CreateButton(name, p.x - 50, p.y - 50, 100, 100), type);
+			break;
+		case (int)CastType::ClickBox:
+			elements.emplace_back(ui->CreateClickBox(name, p.x - 50, p.y - 50, 100, 100), type);
+			break;
+		case (int)CastType::TextBox:
+			elements.emplace_back(ui->CreateTextBox(name, p.x - 50, p.y - 50, 100, 100), type);
+			break;
+		case (int)CastType::PopUpBox:
+			elements.emplace_back(ui->CreatePopUpBox(name, 1'000'000, p.x - 50, p.y - 50, 100, 100), type);
+			break;
+	}
+
+
 	selectedButton = &elements.back();
 	HidePanel();
 }
 
 void ProgramScene::MoveSelected() {
 	if (selectedButton == nullptr) { return; }
-	int x, y;
-	SDL_GetMouseState(&x, &y);
+	Point p = GetMousePos();
 	if (!selectedButton->xAxisBlock) {
-		selectedButton->btn->GetRectangle().x = x - (selectedButton->btn->GetRectangle().w / 2);
+		selectedButton->btn->GetRectangle().x = p.x - (selectedButton->btn->GetRectangle().w / 2);
 	}
 	if (!selectedButton->yAxisBlock) {
-		selectedButton->btn->GetRectangle().y = y - (selectedButton->btn->GetRectangle().h / 2);
+		selectedButton->btn->GetRectangle().y = p.y - (selectedButton->btn->GetRectangle().h / 2);
 	}
 }
 

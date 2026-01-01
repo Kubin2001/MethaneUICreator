@@ -10,10 +10,19 @@
 #include "Basics.h"
 #include "json.hpp"
 
+enum class CastType {
+	Button,
+	ClickBox,
+	TextBox,
+	PopUpBox
+};
+
 // Basic non interactive button
 class UIElemBase :public GameObject {
 public:
 	std::string name = "";
+	int castType = 0; // enum
+
 	std::string text = "";
 	float textScale = 1.0f;
 	int interLine = 20;
@@ -27,9 +36,9 @@ public:
 
 	MT::ColorA buttonColor{ 255,255,255,255 };
 
-	MT::Color borderRGB{ 255,255,255 };
+	MT::ColorA borderRGB{ 255,255,255,255 };
 
-	MT::Color fontRGB{ 255,255,255 };
+	MT::ColorA fontRGB{ 255,255,255,255 };
 
 	Font* font = nullptr;
 
@@ -51,12 +60,6 @@ public:
 
 	bool GetBorder();
 
-	void SetBorder(bool temp);
-
-	void RenderItslelf(MT::Renderer* renderer);
-
-	void RenderItslelfRounded(MT::Renderer* renderer);
-
 	void RenderText(MT::Renderer* renderer);
 
 public:
@@ -77,7 +80,7 @@ public:
 
 	void SetBorderThickness(const int temp);
 
-	void SetBorder(const int width, const unsigned char R, const unsigned char G, const unsigned char B);
+	void SetBorder(const int width, const unsigned char R, const unsigned char G, const unsigned char B, const unsigned char A = 255);
 
 	int GetTextStartX();
 	void SetTextStartX(int temp);
@@ -90,9 +93,9 @@ public:
 
 	void SetColor(const unsigned char R, const unsigned char G, const unsigned char B, const unsigned char A = 255);
 
-	void SetBorderRGB(const unsigned char R, const unsigned char G, const unsigned char B);
+	void SetBorderColor(const unsigned char R, const unsigned char G, const unsigned char B, const unsigned char A = 255);
 
-	void SetFontColor(const unsigned char R, const unsigned char G, const unsigned char B);
+	void SetFontColor(const unsigned char R, const unsigned char G, const unsigned char B, const unsigned char A = 255);
 
 	static void Render(UIElemBase *elem, MT::Renderer* renderer);
 
@@ -141,7 +144,7 @@ class Button : public UIElemBase {
 
 // A button that can be clicked with a mouse
 class ClickBox : public UIElemBase {
-private:
+public:
 	bool status = false;
 	bool turnedOn = true;
 
@@ -169,7 +172,7 @@ public:
 
 // Button that can accept text input
 class TextBox : public UIElemBase {
-private:
+public:
 	bool turnedOn = false;
 public:
 	void CheckInteraction(SDL_Event& event);
@@ -266,6 +269,12 @@ class UI{
 
 		void DumpPopUpBox(nlohmann::ordered_json& json, PopUpBox* pb);
 
+		bool DeleteButton(Button *btn);
+		bool DeleteTextBox(TextBox *tb);
+		bool DeleteClickBox(ClickBox *cb);
+		bool DeletePopUpBox(PopUpBox *pb);
+
+
 	public:
 		bool useLayersInRendering = false;
 
@@ -274,29 +283,29 @@ class UI{
 		UI(MT::Renderer* renderer);
 
 		Button* CreateButton(const std::string &name, int x, int y, int w, int h, MT::Texture* texture = nullptr, Font* font = nullptr,
-			const std::string& text = "", float textScale = 1.0f, int textStartX = 0, int textStartY = 0, int borderThickness = 0);
+			const std::string& text = "", float textScale = 1.0f, int textStartX = 0, int textStartY = 0);
 
 		TextBox* CreateTextBox(const std::string& name, int x, int y, int w, int h, MT::Texture* texture = nullptr, Font* font = nullptr,
-			const std::string& text = "", float textScale = 1.0f, int textStartX = 0, int textStartY = 0, int borderThickness = 0);
+			const std::string& text = "", float textScale = 1.0f, int textStartX = 0, int textStartY = 0);
 
 		ClickBox* CreateClickBox(const std::string& name, int x, int y, int w, int h, MT::Texture* texture = nullptr, Font* font = nullptr,
-			const std::string& text = "", float textScale = 1.0f, int textStartX = 0, int textStartY = 0, int borderThickness = 0);
+			const std::string& text = "", float textScale = 1.0f, int textStartX = 0, int textStartY = 0);
 
 		PopUpBox* CreatePopUpBox(const std::string& name, int lifeSpan, int x, int y, int w, int h, MT::Texture* texture = nullptr, Font* font = nullptr,
-			const std::string& text = "", float textScale = 1.0f, int textStartX = 0, int textStartY = 0, int borderThickness = 0);
+			const std::string& text = "", float textScale = 1.0f, int textStartX = 0, int textStartY = 0);
 
 
 		Button* CreateButtonF(const std::string& name, int x, int y, int w, int h, MT::Texture* texture = nullptr, const std::string &fontStr = "",
-			const std::string& text = "", float textScale = 1.0f, int textStartX = 0, int textStartY = 0, int borderThickness = 0);
+			const std::string& text = "", float textScale = 1.0f, int textStartX = 0, int textStartY = 0);
 
 		TextBox* CreateTextBoxF(const std::string& name, int x, int y, int w, int h, MT::Texture* texture = nullptr, const std::string& fontStr ="",
-			const std::string& text = "", float textScale = 1.0f, int textStartX = 0, int textStartY = 0, int borderThickness = 0);
+			const std::string& text = "", float textScale = 1.0f, int textStartX = 0, int textStartY = 0);
 
 		ClickBox* CreateClickBoxF(const std::string& name, int x, int y, int w, int h, MT::Texture* texture = nullptr, const std::string& fontStr = "",
-			const std::string& text = "", float textScale = 1.0f, int textStartX = 0, int textStartY = 0, int borderThickness = 0);
+			const std::string& text = "", float textScale = 1.0f, int textStartX = 0, int textStartY = 0);
 
 		PopUpBox* CreatePopUpBoxF(const std::string& name, int lifeSpan, int x, int y, int w, int h, MT::Texture* texture = nullptr, const std::string& fontStr= "",
-			const std::string& text = "", float textScale = 1.0f, int textStartX = 0, int textStartY = 0, int borderThickness = 0);
+			const std::string& text = "", float textScale = 1.0f, int textStartX = 0, int textStartY = 0);
 
 		// Renaming and rehasing element
 		bool RenameElem(const std::string& name, const std::string& newName);
@@ -308,22 +317,6 @@ class UI{
 		void ManageTextBoxTextInput(SDL_Event& event);
 
 		void CheckClickBoxes(SDL_Event& event);
-
-		template<typename T>
-		T* UIGetElem(const std::string& name) {
-			auto elemFind = UIElemMap.find(name);
-			if (elemFind == UIElemMap.end()) {
-				return nullptr;
-			}
-
-			T* elem = dynamic_cast<T*>(elemFind->second);
-		//#ifdef _DEBUG
-		//	if (elem == nullptr) {
-		//		throw std::runtime_error("UI::GetElem wrong cast for " + name);
-		//	}
-		//#endif // DEBUG
-			return elem;
-		}
 
 		Button* GetButton(const std::string& name);
 		TextBox* GetTextBox(const std::string& name);
@@ -341,51 +334,8 @@ class UI{
 		void FrameUpdate();
 
 		void ManageInput(SDL_Event& event);
-
-
-		template<typename T>
-		bool EraseVec(std::vector<T*>& vec, const std::string &name) {
-			for (unsigned int i = 0; i < vec.size(); i++) {
-				if (vec[i]->GetName() == name) {
-					delete vec[i];
-					vec.erase(vec.begin() + i);
-					return true;
-				}
-			}
-			return false;
-		}
-
-		template<typename T>
-		bool DeleteElem(const std::string& name) {
-			static_assert(
-					std::is_same_v<T,Button> ||
-					std::is_same_v<T, ClickBox> ||
-					std::is_same_v<T, TextBox> ||
-					std::is_same_v<T, PopUpBox>, "Wrong type allowed : Button, ClickBox, TextBox, PopUpBox"
-				);
-			UIElemMap.erase(name);
-
-			if constexpr (std::is_same_v<T, Button>) {
-				return EraseVec(Buttons,name);
-			}
-			else if constexpr (std::is_same_v<T, ClickBox>) {
-				return EraseVec(ClickBoxes, name);
-			}
-			else if constexpr (std::is_same_v<T, TextBox>) {
-				return EraseVec(TextBoxes, name);
-			}
-			else if constexpr (std::is_same_v<T, PopUpBox>) {
-				return EraseVec(PopUpBoxes, name);
-			}
-			return false;
-		}
-
-		bool DeleteButton(const std::string& name);
-		bool DeleteTextBox(const std::string& name);
-		bool DeleteClickBox(const std::string& name);
-		bool DeletePopUpBox(const std::string& name);
-
-		bool DeleteAnyElem(const std::string& name);
+			
+		bool DeleteElement(const std::string& name);
 
 		void Render();
 
@@ -522,25 +472,12 @@ public:
 
 	void Clear() {
 		if (!initalized) { return; }
-		if constexpr (std::is_same_v<T, Button>) {
-			for (const auto& it : Elements) {
-				ui->DeleteButton(it->GetName());
-			}
-		}
-		else if constexpr (std::is_same_v<T, TextBox>) {
-			for (const auto& it : Elements) {
-				ui->DeleteTextBox(it->GetName());
-			}
-
-		}
-		else if constexpr (std::is_same_v<T, ClickBox>) {
-			for (const auto& it : Elements) {
-				ui->DeleteClickBox(it->GetName());
-			}
+		for (const auto& it : Elements) {
+			ui->DeleteElement(it->GetName());
 		}
 		Elements.clear();
 		if (mainElement != nullptr) {
-			ui->DeleteClickBox(mainElement->GetName());
+			ui->DeleteElement(mainElement->GetName());
 		}
 		mainElement = nullptr;
 		ui->RemoveListRef(this);
@@ -607,16 +544,16 @@ class UISection {
 
 		void Clear() {
 			for (auto& elem: buttons) {
-				ui->DeleteButton(elem->GetName());
+				ui->DeleteElement(elem->GetName());
 			}
 			for (auto& elem : clickBoxes) {
-				ui->DeleteClickBox(elem->GetName());
+				ui->DeleteElement(elem->GetName());
 			}
 			for (auto& elem : textBoxes) {
-				ui->DeleteTextBox(elem->GetName());
+				ui->DeleteElement(elem->GetName());
 			}
 			for (auto& elem : popUpBoxes) {
-				ui->DeleteTextBox(elem->GetName());
+				ui->DeleteElement(elem->GetName());
 			}
 			buttons.clear();
 			textBoxes.clear();
@@ -628,4 +565,97 @@ class UISection {
 		std::vector<TextBox*>& GetTextBoxes() { return textBoxes; }
 		std::vector<ClickBox*>& GetClickBoxes() { return clickBoxes; }
 		std::vector<PopUpBox*>& GetPopUpBoxes() { return popUpBoxes; }
+};
+
+// Designed for managing large interfaces WARING it is up to you to cast to corret type one tag should has only one type for safety
+class TagUISection {
+	private:
+		std::unordered_map<std::string, std::vector<UIElemBase*>> TagMap;
+
+		UI* ui = nullptr;
+
+	public:
+		TagUISection() = default;
+
+		TagUISection(UI* ui) {
+			this->ui = ui;
+		}
+
+		void Init(UI* ui) {
+			this->ui = ui;
+		}
+
+		void Add(const std::string &tag, UIElemBase *elem) {
+			if (ui == nullptr) {
+				throw std::runtime_error("UI is nullptr tag section is not inicialized");
+			}
+			TagMap[tag].emplace_back(elem);
+		}
+
+		void ClearTag(const std::string& tag) {
+			if (ui == nullptr) {
+				throw std::runtime_error("UI is nullptr tag section is not inicialized");
+			}
+			auto iter = TagMap.find(tag);
+			if (iter != TagMap.end()) {
+				TagMap.erase(iter);
+			}
+		}
+
+		void DeleteTag(const std::string& tag) {
+			if (ui == nullptr) {
+				throw std::runtime_error("UI is nullptr tag section is not inicialized");
+			}
+			auto iter = TagMap.find(tag);
+			if (iter != TagMap.end()) {
+				for (auto& elem : iter->second) {
+					ui->DeleteElement(elem->GetName());
+				}
+				TagMap.erase(iter);
+			}
+		}
+
+		void ClearAll() {
+			TagMap.clear();
+		}
+
+		void DeleteAll() {
+			if (ui == nullptr) {
+				throw std::runtime_error("UI is nullptr tag section is not inicialized");
+			}
+			for (auto& tag : TagMap) {
+				for (auto& elem : tag.second) {
+					ui->DeleteElement(elem->GetName());
+				}
+			}
+			TagMap.clear();
+		}
+
+		std::vector<UIElemBase*>& GetTag(const std::string& tag) {
+			if (ui == nullptr) {
+				throw std::runtime_error("UI is nullptr tag section is not inicialized");
+			}
+			auto iter = TagMap.find(tag);
+			if (iter == TagMap.end()) {
+				throw std::runtime_error("This tag does not exist");
+			}
+			return iter->second;
+		}
+
+		UIElemBase* GetElem(const std::string& tag, const std::string &name) {
+			if (ui == nullptr) {
+				throw std::runtime_error("UI is nullptr tag section is not inicialized");
+			}
+			auto iter = TagMap.find(tag);
+
+			if (iter == TagMap.end()) {
+				throw std::runtime_error("This tag does not exist");
+			}
+			for (auto& elem : iter->second) {
+				if (elem->GetName() == name) {
+					return elem;
+				}
+			}
+			return nullptr;
+		}
 };

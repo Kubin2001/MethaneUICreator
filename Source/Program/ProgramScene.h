@@ -7,27 +7,23 @@
 
 class ProgramScene :public Scene{
 	private:
-		ClickBox* runButton = nullptr;
 		Button* rightPanel = nullptr;
 		UIList<ClickBox> btnCreateList;
 		std::vector<CreatedElement> elements;
 		CreatedElement* selectedButton;
 		CreatedElement* editedButton = nullptr;
 		int index = 0;
-		int panelType = 0; //0 no panel 1 Creation Panel 2 Edit Panel  3 run panel
+		int panelType = 0; //0 no panel 1 Creation Panel 2 Edit Panel
 		int editPanelState = 0;// 0 normal 1 smaller options
+
+		int currentScrool = 0;
 
 		UISection currentSection;
 
 		std::vector<TextBox*> editTextRef;
 		std::vector<ClickBox*> editClickRef;
 
-		std::vector<Button*> runBtnRef;
-		std::vector<TextBox*> runTextRef;
-		std::vector<ClickBox*> runClickRef;
-		std::vector<PopUpBox*> runPopUpRef;
-
-		int outInPanel = 0;//1 output 2 input
+		int outInPanel = 0; // 1 output 2 input
 		int outputType = 1; // 1 Przez referencje 2 Przez UI getbutton("name) 
 
 		void ShowPanel();
@@ -45,10 +41,6 @@ class ProgramScene :public Scene{
 		void ShowEditPanel(CreatedElement* button);
 
 		void HideEditPanel(CreatedElement* button);
-
-		void ShowRunPanel();
-
-		void HideRunPanel();
 
 		void CreateNewElem(const int type);
 
