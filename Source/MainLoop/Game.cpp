@@ -66,7 +66,7 @@ void Game::LogicUpdate() {
 void Game::FrameUpdate() {
 	Input();
 	SceneMan::GetCurrentScene()->FrameUpdate();
-	ui->FrameUpdate();
+	//ui->FrameUpdate();
 	Render();
 }
 

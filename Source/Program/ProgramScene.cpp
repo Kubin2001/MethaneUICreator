@@ -320,6 +320,9 @@ void ProgramScene::FrameUpdate(){
 				btn->SetHoverFilter(true, argR, argG, argB, argA);
 			}
 		}
+		else if (ui->GetClickBox("KeyHooverSound")->ConsumeStatus()) {
+			btn->hoverSound = SoundMan::GetSound(ui->GetTextBox("KeyHooverSoundtb")->GetText());
+		}
 
 		if (btn->castType == (int)CastType::ClickBox) {
 			ClickBox* castedCB = static_cast<ClickBox*>(btn);
@@ -338,6 +341,16 @@ void ProgramScene::FrameUpdate(){
 			if (ui->ConsumeIfExist("KeyClickSound")) {
 				std::string val = ui->GetTextBox("KeyClickSoundtb")->GetText();
 				castedCB->clickSound = val;
+			}
+		}
+
+		if (btn->castType == (int)CastType::PopUpBox) {
+			PopUpBox* castedPb = static_cast<PopUpBox*>(btn);
+			if (ui->ConsumeIfExist("KeyLifeTime")) {
+				int val = 0;
+				if (ArgToInt(ui->GetTextBox("KeyLifeTimetb")->GetText(), val)) {
+					castedPb->SetLifeTime(val);
+				}
 			}
 		}
 	}
@@ -722,6 +735,14 @@ void ProgramScene::ShowEditPanel(CreatedElement *button) {
 	CreateQuadEditBox("KeyFilter", y, "Filter", std::to_string(hooverFilter.R),
 		std::to_string(hooverFilter.G), std::to_string(hooverFilter.B), std::to_string(hooverFilter.A));
 
+	std::string hooverSound = "";
+	for (auto& [key, sound] : SoundMan::GetSounds()) {
+		if (ebBtn->hoverSound == sound) {
+			hooverSound = key;
+		}
+	}
+
+	CreateEditBox("KeyHooverSound", y, "HooverSound: ", hooverSound);
 
 
 	if (ebBtn->castType == (int)CastType::ClickBox) {
@@ -731,6 +752,11 @@ void ProgramScene::ShowEditPanel(CreatedElement *button) {
 
 		std::string clickSound = castedElem->clickSound;
 		CreateEditBox("KeyClickSound", y, "Click Sound: ", clickSound);
+	}
+
+	if (ebBtn->castType == (int)CastType::PopUpBox) {
+		PopUpBox* castedElem = static_cast<PopUpBox*>(ebBtn);
+		CreateEditBox("KeyLifeTime", y, "Life Time: ", std::to_string(castedElem->GetLifeTime()));
 	}
  
 
@@ -817,10 +843,9 @@ void ProgramScene::CreateNewElem(const int type) {
 			elements.emplace_back(ui->CreateTextBox(name, p.x - 50, p.y - 50, 100, 100), type);
 			break;
 		case (int)CastType::PopUpBox:
-			elements.emplace_back(ui->CreatePopUpBox(name, 1'000'000, p.x - 50, p.y - 50, 100, 100), type);
+			elements.emplace_back(ui->CreatePopUpBox(name, 120, p.x - 50, p.y - 50, 100, 100), type);
 			break;
 	}
-
 
 	selectedButton = &elements.back();
 	HidePanel();

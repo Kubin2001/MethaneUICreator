@@ -126,7 +126,7 @@ std::string AditionalToString(UIElemBase* button, UI* ui) {
 }
 
 void SelectStrings(std::string &btnOutStr, std::string& getBtnStr, UIElemBase* button, int type) {
-	if (type == 1) { // Button
+	if (type == (int)CastType::Button) { // Button
 		if (printerOutType == 1) {
 			if (firstBtn) {
 				btnOutStr = "Button *btn = ui->CreateButton(";
@@ -142,7 +142,7 @@ void SelectStrings(std::string &btnOutStr, std::string& getBtnStr, UIElemBase* b
 			getBtnStr = "\nui->GetButton(\"" + button->GetName() + "\")->";
 		}
 	}
-	else if (type == 2) { // TextBox
+	else if (type == (int)CastType::TextBox) { // TextBox
 		if (printerOutType == 1) {
 			if (firsttextBox) {
 				btnOutStr = "TextBox *tb = ui->CreateTextBox(";
@@ -158,7 +158,7 @@ void SelectStrings(std::string &btnOutStr, std::string& getBtnStr, UIElemBase* b
 			getBtnStr = "\nui->GetTextBox(\"" + button->GetName() + "\")->";
 		}
 	}
-	else if (type == 3) { 
+	else if (type == (int)CastType::ClickBox) {
 		if (printerOutType == 1) {
 			if (firstclickBox) {
 				btnOutStr = "ClickBox *cb = ui->CreateClickBox(";
@@ -174,7 +174,7 @@ void SelectStrings(std::string &btnOutStr, std::string& getBtnStr, UIElemBase* b
 			btnOutStr = "ui->CreateClickBox(";
 		}
 	}
-	else if (type == 4) { 
+	else if (type == (int)CastType::PopUpBox) {
 		if (printerOutType == 1) {
 			if (firstpopUpBox) {
 				btnOutStr = "PopUpBox *pub = ui->CreatePopUpBox(";
@@ -192,19 +192,17 @@ void SelectStrings(std::string &btnOutStr, std::string& getBtnStr, UIElemBase* b
 	}
 }
 
-std::string ButtonToString(UIElemBase* button, int type, UI *ui, int renderType) {
+std::string ButtonToString(UIElemBase* button, UI *ui, int renderType) {
 	std::string btnOutput = "";
 	std::string getBtnStr = "";
-
-	if (type == 0) {
-		return (std::string)"Wrong type";
-	}
-	SelectStrings(btnOutput, getBtnStr, button, type);
+	std::string endStr = ");\n";
+	SelectStrings(btnOutput, getBtnStr, button, button->castType);
 
 	btnOutput += "\"" + button->GetName() + "\"";
 	btnOutput += ',';
-	if (type == 4) {
-		btnOutput += "120,"; // Czas pop up boxa na ile wyskakuje
+	if (button->castType == (int)CastType::PopUpBox) {
+		PopUpBox* pb = static_cast<PopUpBox*>(button);
+		btnOutput += std::to_string(pb->GetLifeTime()) + ","; // Czas pop up boxa na ile wyskakuje 
 	}
 	btnOutput += std::to_string(button->GetRectangle().x);
 	btnOutput += ',';
@@ -214,40 +212,59 @@ std::string ButtonToString(UIElemBase* button, int type, UI *ui, int renderType)
 	btnOutput += ',';
 	btnOutput += std::to_string(button->GetRectangle().h);
 	btnOutput += AditionalToString(button, ui);
-	btnOutput += ");";
+	btnOutput += endStr;
 
 	if (button->textRenderType != 1) {
-		btnOutput += getBtnStr + "SetRenderTextType(" + std::to_string(button->textRenderType) + ");";
+		btnOutput += getBtnStr + "SetRenderTextType(" + std::to_string(button->textRenderType) + endStr;
 	}
 
 	if (button->zLayer != 0) {
-		btnOutput += getBtnStr + "SetZLayer(" + std::to_string(button->zLayer) + ");";
+		btnOutput += getBtnStr + "SetZLayer(" + std::to_string(button->zLayer) + endStr;
 	}
 	if (renderType == 2) {
-		btnOutput += getBtnStr + "SetRenderType(" + std::to_string(renderType) + ");";
+		btnOutput += getBtnStr + "SetRenderType(" + std::to_string(renderType) + endStr;
 	}
 	if (button->buttonColor.R != 255 || button->buttonColor.G != 255 || button->buttonColor.B != 255 || button->buttonColor.A != 255) {
 		btnOutput += getBtnStr + "SetColor(" + 
 			std::to_string(button->buttonColor.R) + ',' +
 			std::to_string(button->buttonColor.G) + ',' +
 			std::to_string(button->buttonColor.B) + ',' +
-			std::to_string(button->buttonColor.A) + 
-			+ ");";
+			std::to_string(button->buttonColor.A) + endStr;
 	}
 	if (button->borderThickness != 0 || button->borderRGB.R != 255 || button->borderRGB.G != 255 || button->borderRGB.B != 255) {
 		btnOutput += getBtnStr + "SetBorder(" +
 			std::to_string(button->borderThickness) + ',' +
 			std::to_string(button->borderRGB.R) + ',' +
 			std::to_string(button->borderRGB.G) + ',' +
-			std::to_string(button->borderRGB.B) +
-			+");";
+			std::to_string(button->borderRGB.B) + endStr;
 	}
 	if (button->fontRGB.R != 255 || button->fontRGB.G != 255 || button->fontRGB.B != 255) {
 		btnOutput += getBtnStr + "SetFontColor(" +
 			std::to_string(button->fontRGB.R) + ',' +
 			std::to_string(button->fontRGB.G) + ',' +
-			std::to_string(button->fontRGB.B) +
-			+");";
+			std::to_string(button->fontRGB.B) + endStr;
+	}
+	if (button->hoverFilter.R != 0 || button->hoverFilter.G != 0 || button->hoverFilter.B != 0 || button->hoverFilter.A != 0) {
+		std::string hooverSound = "";
+		for (auto& [key, sound] : SoundMan::GetSounds()) {
+			if (button->hoverSound == sound) {
+				hooverSound = key;
+			}
+		}
+
+		btnOutput += std::format("{}SetHoverFilter(true,{},{},{},{},\"{}\");\n", getBtnStr, button->hoverFilter.R, button->hoverFilter.G
+			, button->hoverFilter.B, button->hoverFilter.A, hooverSound);
+	}
+
+	if (button->castType == (int)CastType::ClickBox) {
+		ClickBox* cb = static_cast<ClickBox*>(button);
+		if (!cb->IsOn()) {
+			cb->TurnOff();
+			btnOutput += std::format("{}TurnOff();", getBtnStr);
+		}
+		if (cb->clickSound != "") {
+			btnOutput += std::format("{}SetClickSound(\"{}\");\n", getBtnStr, cb->clickSound);
+		}
 	}
 
 	return btnOutput;
@@ -258,10 +275,10 @@ void OutputUILayout(const std::vector<CreatedElement> &elements, UI *ui, int out
 	firsttextBox = true;
 	firstclickBox = true;
 	firstpopUpBox = true;
-	std::ofstream file("test.txt");
+	std::ofstream file("output.txt");
 	printerOutType = outputType;
 	for (auto& cElem : elements) {
-		file << ButtonToString(cElem.btn,cElem.type, ui,cElem.renderType) + "\n";
+		file << ButtonToString(cElem.btn, ui,cElem.renderType) + "\n";
 	}
 	firstBtn = false;
 	firsttextBox = false;
