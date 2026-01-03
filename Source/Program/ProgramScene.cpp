@@ -359,22 +359,33 @@ void ProgramScene::FrameUpdate(){
 		outputType = 1;
 		ui->GetClickBox("brnDirOut")->SetColor(255, 0, 0);
 		ui->GetClickBox("btnRefOpt")->SetColor(0, 255, 0);
+		ui->GetClickBox("outJsonCb")->SetColor(255, 0, 0);
 	}
 	if (ui->ConsumeIfExist("brnDirOut")) {
 		outputType = 2;
 		ui->GetClickBox("brnDirOut")->SetColor(0,255,0);
 		ui->GetClickBox("btnRefOpt")->SetColor(255, 0, 0);
+		ui->GetClickBox("outJsonCb")->SetColor(255, 0, 0);
 	}
 	if (ui->ConsumeIfExist("outJsonCb")) {
-		std::vector<UIElemBase*> dumpElements;
-		for (auto& elem : elements) {
-			dumpElements.emplace_back(elem.btn);
-		}
-		ui->DumpToJson("jsonDump",dumpElements);
+		outputType = 3;
+		ui->GetClickBox("brnDirOut")->SetColor(255, 0, 0);
+		ui->GetClickBox("btnRefOpt")->SetColor(255, 0, 0);
+		ui->GetClickBox("outJsonCb")->SetColor(0, 255, 0);
 	}	
 	if(ui->ConsumeIfExist("outConfBtn")){
-		OutputUILayout(elements, ui, outputType);
-		HideOutputSubPanel();
+		std::string outName = ui->GetTextBox("outNameBtn")->GetText();
+		if (elements.empty()) {
+			CreateErrorBox(ui, "Nothing to output");
+			return;
+		}
+		if (outName.size() > 2 && outName.size() < 12) {
+			OutputUILayout(elements, ui, outputType, outName);
+			HideOutputSubPanel();
+		}
+		else {
+			CreateErrorBox(ui, "Output name needs to be between 3 and 12 characters");
+		}
 	}
 
 	// Output
@@ -383,20 +394,7 @@ void ProgramScene::FrameUpdate(){
 		std::string fileName = fe.Open("");
 		std::vector <UIElemBase*> loadedElements = ui->LoadFromJson(fileName);
 		for (auto& elem : loadedElements) {
-			int type = 0;
-			if (dynamic_cast<Button*>(elem) != nullptr) {
-				type = 1;
-			}
-			if (dynamic_cast<TextBox*>(elem) != nullptr) {
-				type = 2;
-			}
-			if (dynamic_cast<ClickBox*>(elem) != nullptr) {
-				type = 3;
-			}
-			if (dynamic_cast<PopUpBox*>(elem) != nullptr) {
-				type = 4;
-			}
-			elements.emplace_back(elem,type);
+			elements.emplace_back(elem);
 		}
 	}
 	MoveSelected();
@@ -463,9 +461,10 @@ void ProgramScene::Input(SDL_Event& event){
 			}
 			if (elem != nullptr) {
 				std::string id = std::to_string(rand());
-				CreatedElement newElement(ui->CreateButton(elem->btn->GetName() + "copy" + id, 10, 10, 10, 10),elem->type);
+				CreatedElement newElement(ui->CreateButton(elem->btn->GetName() + "copy" + id, 10, 10, 10, 10));
 				newElement.renderType = elem->renderType;
 				*newElement.btn = *elem->btn;
+
 				newElement.btn->name = elem->btn->GetName() + "copy" + id;
 				elements.emplace_back(newElement);
 				selectedButton = &elements.back();
@@ -682,7 +681,7 @@ void ProgramScene::ShowEditPanel(CreatedElement *button) {
 	cb->SetHoverFilter(true, 255, 255, 255, 120);
 
 
-	ui->CreateClickBoxF("KeyUpdateAll", Global::windowWidth - 80, Global::windowHeight / 2, 70, 30, nullptr, "arial12px", "Update All");
+	ui->CreateClickBoxF("KeyUpdateAll", rightPanel->GetRectangle().x -70, 10, 70, 30, nullptr, "arial12px", "Update All");
 	SetUpBasicElem(ui->GetClickBox("KeyUpdateAll"));
 	ui->GetClickBox("KeyUpdateAll")->SetHoverFilter(true, 255, 255, 255, 120);
 
@@ -834,16 +833,16 @@ void ProgramScene::CreateNewElem(const int type) {
 
 	switch (type) {
 		case (int)CastType::Button:
-			elements.emplace_back(ui->CreateButton(name, p.x - 50, p.y - 50, 100, 100), type);
+			elements.emplace_back(ui->CreateButton(name, p.x - 50, p.y - 50, 100, 100));
 			break;
 		case (int)CastType::ClickBox:
-			elements.emplace_back(ui->CreateClickBox(name, p.x - 50, p.y - 50, 100, 100), type);
+			elements.emplace_back(ui->CreateClickBox(name, p.x - 50, p.y - 50, 100, 100));
 			break;
 		case (int)CastType::TextBox:
-			elements.emplace_back(ui->CreateTextBox(name, p.x - 50, p.y - 50, 100, 100), type);
+			elements.emplace_back(ui->CreateTextBox(name, p.x - 50, p.y - 50, 100, 100));
 			break;
 		case (int)CastType::PopUpBox:
-			elements.emplace_back(ui->CreatePopUpBox(name, 120, p.x - 50, p.y - 50, 100, 100), type);
+			elements.emplace_back(ui->CreatePopUpBox(name, 120, p.x - 50, p.y - 50, 100, 100));
 			break;
 	}
 
@@ -864,7 +863,7 @@ void ProgramScene::MoveSelected() {
 
 void ProgramScene::CreateOutputSubPanel() {
 	currentSection.Clear();
-	Button *btn = ui->CreateButton("outBtnBack", 100, 100, 300, 250,nullptr,ui->GetFont("arial20px"),"OutputOptions",1.0f,0,10);
+	Button *btn = ui->CreateButton("outBtnBack", 100, 100, 300, 300,nullptr,ui->GetFont("arial20px"),"OutputOptions",1.0f,0,10);
 	btn->SetRenderTextType(4);
 	btn->SetColor(50, 30, 50, 255);
 	btn->SetBorder(2, 100, 100, 255);
@@ -891,7 +890,14 @@ void ProgramScene::CreateOutputSubPanel() {
 	cb->SetColor(255, 0, 0, 255);
 	Adjust(cb);
 
-	cb = ui->CreateClickBox("outConfBtn", 200, 240, 100, 50, nullptr, ui->GetFont("arial20px"), "Confirm");
+	TextBox *tb = ui->CreateTextBox("outNameBtn", 200, 240, 100, 50, nullptr, ui->GetFont("arial12px"), "Enter Name");
+	tb->SetRenderTextType(2);
+	tb->SetColor(70, 30, 70, 255);
+	tb->SetBorder(1, 100, 100, 255);
+	tb->SetHoverFilter(true, 255, 255, 255, 120, "hoverSound");
+	currentSection.Add(tb);
+
+	cb = ui->CreateClickBox("outConfBtn", 200, 320, 100, 50, nullptr, ui->GetFont("arial20px"), "Confirm");
 	cb->SetRenderTextType(2);
 	cb->SetColor(70, 30, 70, 255);
 	Adjust(cb);

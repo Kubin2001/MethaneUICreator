@@ -24,7 +24,7 @@ class ProgramScene :public Scene{
 		std::vector<ClickBox*> editClickRef;
 
 		int outInPanel = 0; // 1 output 2 input
-		int outputType = 1; // 1 Przez referencje 2 Przez UI getbutton("name) 
+		int outputType = 1; // 1 Przez referencje 2 Przez UI getbutton("name)  3 przez json
 
 		void ShowPanel();
 

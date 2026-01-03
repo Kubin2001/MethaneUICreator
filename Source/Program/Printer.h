@@ -270,21 +270,21 @@ std::string ButtonToString(UIElemBase* button, UI *ui, int renderType) {
 	return btnOutput;
 }
 
-void OutputUILayout(const std::vector<CreatedElement> &elements, UI *ui, int outputType) {
-	firstBtn = true;
-	firsttextBox = true;
-	firstclickBox = true;
-	firstpopUpBox = true;
-	std::ofstream file("output.txt");
-	printerOutType = outputType;
+void OutputUILayout(const std::vector<CreatedElement> &elements, UI *ui, int outputType, const std::string &outputName) {
+	if (outputType == 3) { //josn
+		std::vector<UIElemBase*> dumpElements;
+		for (auto& elem : elements) {
+			dumpElements.emplace_back(elem.btn);
+		}
+		ui->DumpToJson(outputName, dumpElements);
+		std::println("Outputed");
+		return;
+	}
+	std::ofstream file(outputName + ".txt");
 	for (auto& cElem : elements) {
 		file << ButtonToString(cElem.btn, ui,cElem.renderType) + "\n";
 	}
-	firstBtn = false;
-	firsttextBox = false;
-	firstclickBox = false;
-	firstpopUpBox = false;
-	std::println("Outputed");
+
 }
 
 
