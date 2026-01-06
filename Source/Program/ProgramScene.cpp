@@ -413,6 +413,7 @@ void ProgramScene::Input(SDL_Event& event){
 		else if (event.key.keysym.scancode == SDL_SCANCODE_O) { // output
 			if (panelType == 2) { return; }
 			if (outInPanel == 1) {
+				if (ui->GetTextBox("outNameBtn")->IsUsed()) { return; }
 				HideOutputSubPanel();
 			}
 			else {
