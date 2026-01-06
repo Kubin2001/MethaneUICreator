@@ -78,7 +78,10 @@ void ProgramScene::FrameUpdate(){
 				if (val >= 300 && val <= 4000) {
 					Global::windowWidth = val;
 					SDL_SetWindowSize(SceneMan::GetData<SDL_Window*>("Window"), val, Global::windowHeight);
+					renderer->Resize(val, Global::windowHeight);
 					rightPanel->GetRectangle().Set(Global::windowWidth - 300, 0, 300, Global::windowHeight);
+					HidePanel();
+					ShowPanel();
 				}
 				else {
 					CreateErrorBox(ui, "Size must be between 300 and 4000");
@@ -91,7 +94,10 @@ void ProgramScene::FrameUpdate(){
 				if (val >= 300 && val <= 4000) {
 					Global::windowHeight = val;
 					SDL_SetWindowSize(SceneMan::GetData<SDL_Window*>("Window"), Global::windowWidth, val);
+					renderer->Resize(Global::windowWidth, val);
 					rightPanel->GetRectangle().Set(Global::windowWidth - 300, 0, 300, Global::windowHeight);
+					HidePanel();
+					ShowPanel();
 				}
 				else {
 					CreateErrorBox(ui, "Size must be between 300 and 4000");
