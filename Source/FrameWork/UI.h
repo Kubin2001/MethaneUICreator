@@ -14,14 +14,34 @@ enum class CastType {
 	Button,
 	ClickBox,
 	TextBox,
-	PopUpBox
+	PopUpBox,
+	Slider
 };
+
+enum class TextRenderType {
+	Standard,
+	Centered,
+	FromRight,
+	CenteredX,
+	CenteredY
+};
+
+enum class RenderType {
+	Standard,
+	Rounded
+};
+
+enum class SliderSlide {
+	X,
+	Y
+};
+
 
 // Basic non interactive button
 class UIElemBase :public GameObject {
 public:
 	std::string name = "";
-	int castType = 0; // enum
+	CastType castType = CastType::Button;
 
 	std::string text = "";
 	float textScale = 1.0f;
@@ -44,7 +64,7 @@ public:
 
 	void (*renderFunction)(UIElemBase* ,MT::Renderer*) = nullptr;
 
-	unsigned short textRenderType = 1;
+	unsigned short textRenderType = 0; // Base is left up corner
 
 	bool hidden = false;
 
@@ -61,6 +81,8 @@ public:
 	bool GetBorder();
 
 	void RenderText(MT::Renderer* renderer);
+
+	void SetZLayer(const int temp);
 
 public:
 	std::string& GetName();
@@ -101,15 +123,10 @@ public:
 
 	static void RenderRounded(UIElemBase* elem, MT::Renderer* renderer);
 
-	// 1 normal rectangle
-	// 2 rounded rectangle
+	// Use Enum RenderType::
 	void SetRenderType(const unsigned int renderType);
 	
-	// 1 Standard
-	// 2 Center
-	// 3 From Right
-	// 4 Centered on X axis
-	// 5 Centered on Y axis
+	// Use Enum TextRenderType::
 	void SetRenderTextType(const unsigned short textRenderType);
 
 	bool IsHidden();
@@ -127,8 +144,6 @@ public:
 	Mix_Chunk* GetHoverSound();
 
 	int GetZLayer();
-
-	void SetZLayer(const int temp);
 
 	virtual ~UIElemBase() = default;
 
@@ -195,7 +210,7 @@ public:
 
 
 class PopUpBox : public UIElemBase {
-	public:
+	private:
 		int lifeTime = 0;
 
 	public:
@@ -205,13 +220,40 @@ class PopUpBox : public UIElemBase {
 		void SetLifeTime(const int lifeTime);
 };
 
-
-class RenderingLayer {
-	public:
-		friend class UI;
+class Slider : public UIElemBase {
 	private:
-		std::vector<UIElemBase*> Elements;
+		int slideType = 0; //Enmum class SliderSlide
+		int min = 0; // Min X or Y slider can go
+		int max = 0; // Max X or Y slider can go
+
+	public:
+		// Getters
+		int GetSlideType() const { return slideType; }
+		int GetMin() const { return min; }
+		int GetMax() const { return max; }
+
+		// Setters
+		void SetSlideType(int value) { slideType = value; }
+		void SetMin(int value) { min = value; }
+		void SetMax(int value) { max = value; }
+
+		float GetPercent() {
+			int radius = 0;
+			int pos = 0;
+			if (slideType == (int)SliderSlide::X) {
+				radius = max - min - GetRectangle().w;
+				pos = GetRectangle().x - min;
+			}
+			else {
+				radius = max - min - GetRectangle().h;
+				pos = GetRectangle().y - min;
+			}
+			return (float)pos / radius;
+		}
+
+		friend class UI;
 };
+
 
 template<typename T>
 class UIList;
@@ -220,15 +262,14 @@ class UISection;
 
 // To propelly start the UI you need to place manage input function in event loop and render in rendering loop
 class UI{
-public:
+	public:
 		MT::Renderer* renderer;
 		LocalTexMan* localTexMan = nullptr;
 
 		std::vector<UIElemBase*> UiElemVec;
+		std::vector<std::vector<UIElemBase*>> ZElemVec;
 
 		std::unordered_map<std::string, UIElemBase*> UIElemMap;
-
-		std::map<int, RenderingLayer> Zlayers;
 
 		std::vector<UIList<Button>*> ListBtnRef;
 		std::vector<UIList<TextBox>*> ListTbRef;
@@ -275,12 +316,16 @@ public:
 
 		void DumpPopUpBox(nlohmann::ordered_json& json, PopUpBox* pb);
 
+		void DumpSlider(nlohmann::ordered_json& json, Slider* sl);
+
 		void FillElem(UIElemBase* elem, const std::string& name, int x, int y, int w, int h, MT::Texture* texture = nullptr, Font* font = nullptr,
 			const std::string& text = "", float textScale = 1.0f, int textStartX = 0, int textStartY = 0);
 
 		struct Settings {
+		private:
 			// Render elements based on their z layer not based on which was created last
 			bool useLayersInRendering = false;
+		public:
 			// If the newest ClickBox is clicked older ones that are also clicked will not call its status
 			// it might not work well with layers in rendering tuned on 
 			bool stopCheckAtFirst = false;
@@ -289,6 +334,8 @@ public:
 			bool stopHoverAtFirst = false;
 			// Click boxes status will be checked at MOUSEBUTTONUP not like default MOUSEBUTTONDOWN
 			bool clickBoxStartAtDown = false;
+
+			friend class UI;
 		};
 
 	public:
@@ -299,6 +346,23 @@ public:
 		template<typename T>
 		friend class UIList;
 		UI(MT::Renderer* renderer);
+
+		Button* LCreateButton(int layer, const std::string& name, int x, int y, int w, int h, MT::Texture* texture =nullptr, 
+			Font* font = nullptr,const std::string& text = "", float textScale = 1.0f, int textStartX = 0, int textStartY = 0);
+
+		TextBox* LCreateTextBox(int layer, const std::string& name, int x, int y, int w, int h, MT::Texture* texture = nullptr,
+			Font* font = nullptr,
+			const std::string& text = "", float textScale = 1.0f, int textStartX = 0, int textStartY = 0);
+
+		ClickBox* LCreateClickBox(int layer, const std::string& name, int x, int y, int w, int h, MT::Texture* texture = nullptr,
+			Font* font = nullptr,
+			const std::string& text = "", float textScale = 1.0f, int textStartX = 0, int textStartY = 0);
+
+		PopUpBox* LCreatePopUpBox(int layer, const std::string& name, int lifeSpan, int x, int y, int w, int h, MT::Texture* texture = nullptr,
+			Font* font = nullptr, const std::string& text = "", float textScale = 1.0f, int textStartX = 0, int textStartY = 0);
+
+		Slider* LCreateSlider(int layer, const std::string& name, int x, int y, int w, int h, int slideType, int min, int max,
+			MT::Texture* texture = nullptr);
 
 		Button* CreateButton(const std::string &name, int x, int y, int w, int h, MT::Texture* texture = nullptr, Font* font = nullptr,
 			const std::string& text = "", float textScale = 1.0f, int textStartX = 0, int textStartY = 0);
@@ -311,6 +375,8 @@ public:
 
 		PopUpBox* CreatePopUpBox(const std::string& name, int lifeSpan, int x, int y, int w, int h, MT::Texture* texture = nullptr, Font* font = nullptr,
 			const std::string& text = "", float textScale = 1.0f, int textStartX = 0, int textStartY = 0);
+
+		Slider* CreateSlider(const std::string& name, int x, int y, int w, int h, int slideType, int min, int max, MT::Texture* texture = nullptr);
 
 		Button* CreateButtonF(const std::string& name, int x, int y, int w, int h, MT::Texture* texture = nullptr, const std::string &fontStr = "",
 			const std::string& text = "", float textScale = 1.0f, int textStartX = 0, int textStartY = 0);
@@ -335,18 +401,23 @@ public:
 
 		void CheckClickBoxes(ClickBox* cb, int eventType, bool& forceStop, SDL_Event& event);
 
+		void SlideSliders(Slider* slider, SDL_Event& event);
+
+		UIElemBase* GetElem(const std::string& name);
 		Button* GetButton(const std::string& name);
 		TextBox* GetTextBox(const std::string& name);
 		ClickBox* GetClickBox(const std::string& name);
 		PopUpBox* GetPopUpBox(const std::string& name);
+		Slider* GetSlider(const std::string& name);
 
 		// Consumes click box status if click box exist safe and recomended to ui->getClickBox->ConsumeStatus()
 		bool ConsumeIfExist(const std::string& name);
 
 		void SetElementColor(const std::string& name, const unsigned char R, unsigned char G, unsigned char B);
-
 		void SetElementBorderColor(const std::string& name, const unsigned char R, const unsigned char G, const unsigned char B);
 		void SetElementFontColor(const std::string& name, const unsigned char R, const unsigned char G, const unsigned char B);
+
+		void SetElementZLayer(const std::string& name, int zlayer);
 
 		void FrameUpdate();
 
@@ -359,13 +430,19 @@ public:
 		void RenderRawText(Font* font, const int x, const int y, const std::string& text,const int interline,
 			const unsigned char R, const unsigned char G, const unsigned char B);
 
+		// This function should be called only once at the Game::Start function since it is slow because it needs to recrate all ui rendering
+		// If you use z layer from now on you should create new elements with CreateLayered (old way still works but it would be slower)
+		// Layers are not dynamic you can use layers from 0 to 100 if you will give larger number it will default to 100
+		// Smaller number will default to 0
+		void UseLayerInRendering(bool use);
+
 
 		// You need to provide not name (made up by you) texture (needs to be already loaded by texture manager) path to pregenerated json file
 		// Strongly recomended to use  CrateTempFontFromTTF if you do not have any custom strange fonts
 		void CreateFont(const std::string& name, MT::Texture* texture, const std::string& jsonPath);
 
 		//Generates font directly form TTF file you can find this files for example in system32/Fonts
-		void CrateTempFontFromTTF(const char* ttfPath, const int size, const std::string& name, LocalTexMan* localTexMan = nullptr);
+		bool CrateTempFontFromTTF(const char* ttfPath, const int size, const std::string& name, LocalTexMan* localTexMan = nullptr);
 
 		Font* GetFont(const std::string& name);
 
@@ -412,7 +489,7 @@ private:
 
 public:
 
-	void Innit(UI* ui, ClickBox* main, int w, int h, int R, int G, int B, const std::vector<std::string>& texts, short space = 0) {
+	void Init(UI* ui, ClickBox* main, int w, int h, int R, int G, int B, const std::vector<std::string>& texts, short space = 0) {
 		this->ui = ui;
 		mainElement = main;
 		Elements.reserve(texts.size());

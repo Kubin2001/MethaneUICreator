@@ -3,19 +3,19 @@
 void SetUpBasicElem(Button* elem){
 	elem->SetColor(30, 30, 30);
 	elem->SetBorder(1, 0, 100, 200);
-	elem->SetRenderTextType(2);
+	elem->SetRenderTextType((int)TextRenderType::Centered);
 }
 
 void SetUpBasicElem(TextBox* elem){
 	elem->SetColor(30, 30, 30);
 	elem->SetBorder(1, 0, 100, 200);
-	elem->SetRenderTextType(2);
+	elem->SetRenderTextType((int)TextRenderType::Centered);
 }
 
 void SetUpBasicElem(ClickBox* elem) {
 	elem->SetColor(30, 30, 30);
 	elem->SetBorder(1, 0, 100, 200);
-	elem->SetRenderTextType(2);
+	elem->SetRenderTextType((int)TextRenderType::Centered);
 }
 
 bool ArgToInt(const std::string& arg, int& intArg) {

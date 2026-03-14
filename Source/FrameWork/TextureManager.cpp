@@ -6,39 +6,65 @@
 #include <filesystem>
 #include <vector>
 #include <string>
+#include <format>
 
 
 std::unordered_map<std::string, MT::Texture*> TexMan::Textures;
 std::vector<std::string> TexMan::SupportedFormats;
 MT::Renderer* TexMan::renderer = nullptr;
-bool TexMan::isInnit = false;
+bool TexMan::isInit = false;
+MT::Texture* TexMan::defaultTex = nullptr;
+
+void TexMan::CreateDefaultTexture() {
+	SDL_Surface* surface = SDL_CreateRGBSurface(
+		0, 2, 2, 32,
+		0x00FF0000, 
+		0x0000FF00,
+		0x000000FF,
+		0xFF000000
+	);
+	// Last for numbers 0x... are format mapping R,G,B,A not real pixels colors
+
+	Uint32* p = (Uint32*)surface->pixels;
+	p[0] = 0xFFFF00FF;
+	p[1] = 0xFF000000;
+	p[2] = 0xFF000000;
+	p[3] = 0xFFFF00FF;
+
+	defaultTex = MT::LoadTextureFromSurface(surface);
+	SDL_FreeSurface(surface);
+}
 
 
 bool TexMan::Start(MT::Renderer* ren) {
-   renderer = ren;
-   if (renderer != nullptr) {
-	   isInnit = true;
-	   SupportedFormats.emplace_back(".png");
-	   SupportedFormats.emplace_back(".jpg");
-	   SupportedFormats.emplace_back(".jpeg");
-	   SupportedFormats.emplace_back(".bmp");
-	   SupportedFormats.emplace_back(".gif");
-	   SupportedFormats.emplace_back(".tif");
-	   SupportedFormats.emplace_back(".tiff");
-	   SupportedFormats.emplace_back(".tga");
-	   SupportedFormats.emplace_back(".ico");
-	   SupportedFormats.emplace_back(".cur");
-	   SupportedFormats.emplace_back(".pcx");
-	   SupportedFormats.emplace_back(".xpm");
-	   return isInnit;
-   }
+	if (isInit) {
+		return false;
+	}
+	renderer = ren;
+	if (renderer != nullptr) {
+		isInit = true;
+		SupportedFormats.emplace_back(".png");
+		SupportedFormats.emplace_back(".jpg");
+		SupportedFormats.emplace_back(".jpeg");
+		SupportedFormats.emplace_back(".bmp");
+		SupportedFormats.emplace_back(".gif");
+		SupportedFormats.emplace_back(".tif");
+		SupportedFormats.emplace_back(".tiff");
+		SupportedFormats.emplace_back(".tga");
+		SupportedFormats.emplace_back(".ico");
+		SupportedFormats.emplace_back(".cur");
+		SupportedFormats.emplace_back(".pcx");
+		SupportedFormats.emplace_back(".xpm");
+		CreateDefaultTexture();
+		return isInit;
+	}
 
-   return false;
+	return false;
 }
 
 
 bool TexMan::IsWorking() {
-	return isInnit;
+	return isInit;
 }
 
 void TexMan::Print() {
@@ -105,13 +131,19 @@ void TexMan::DeepLoad(const std::string& directory) {
 }
 
 
-MT::Texture* TexMan::GetTex(const std::string& name) {
+MT::Texture* TexMan::GetTex(const std::string& name, bool retNullOnMissing) {
 	auto it = Textures.find(name);
 	if (it != Textures.end()) {
 		return it->second;
 	}
-	//std::cerr << "Texture not found: " << name << "\n";
-	return nullptr;
+	if (retNullOnMissing) {
+		return nullptr;
+	}
+	return defaultTex;
+}
+
+MT::Texture* TexMan::GetDefaultTex() {
+	return defaultTex;
 }
 
 bool TexMan::DeleteTexture(const std::string& name) {
@@ -183,8 +215,8 @@ Point TexMan::GetTextureSize(const std::string& name) {
 	Point p(-1, -1);
 	auto it = Textures.find(name);
 	if (it == Textures.end()) {
+		std::println("Texture not found: {}", name);
 		return p;
-		std::cerr << "Texture not found: " << name << "\n";
 	}
 	p.x = it->second->w;
 	p.y = it->second->h;
@@ -287,19 +319,196 @@ void TexMan::SplitTexture(const char* path, const std::vector<std::string> &name
 	}
 }
 
+MT::Atlas TexMan::CreateAtlas(int tileSize, const std::vector<std::string>& textureNames, bool deleteOriginals) {
+	std::vector<std::string> errors;
+	if (tileSize < 1 || tileSize > 2048) {
+		errors.emplace_back("Illogical Tile Size must be between 1 and 2048");
+		return {errors};
+	}
+
+	if (textureNames.empty()) {
+		errors.emplace_back("Textures names are empty cannot create empty atlas");
+		return { errors };
+	}
+
+	// Creating MT::textures vector
+
+	std::vector<MT::Texture*> texturesToMap;
+	texturesToMap.reserve(textureNames.size());
+
+	for (auto& name : textureNames) {
+		auto texIter = Textures.find(name);
+		if (texIter != Textures.end()) {
+			texturesToMap.emplace_back(texIter->second);
+		}
+		else {
+			errors.emplace_back(std::format(" Texture with name: {} is not loaded", texIter->first));
+			return { errors };
+		}
+	}
+
+	// Getting max textures sizes
+	int maxWidth = 0;
+	int maxHeight = 0;
+	int meanWidth = 0;
+	int meanHeight = 0;
+
+	for (auto& tex : texturesToMap) {
+		if (tex->w > maxWidth) {
+			maxWidth = tex->w;
+		}
+		if (tex->h > maxHeight) {
+			maxHeight = tex->h;
+		}
+		meanHeight += tex->h;
+		meanWidth += tex->w;
+	}
+	meanWidth /= texturesToMap.size();
+	meanHeight /= texturesToMap.size();
+
+	// Creating TileMapSize
+	int rowsSize = (std::max(maxHeight, static_cast<int>(meanHeight * (texturesToMap.size() / 2) + 1)) / tileSize +1);
+	int colSize = (std::max(maxWidth, static_cast<int>(meanWidth * (texturesToMap.size() / 2) + 1)) / tileSize) +1;
+	
+	int maxOpenGLTexSizeFlorred = 4000;
+	if (rowsSize > maxOpenGLTexSizeFlorred / tileSize || colSize > maxOpenGLTexSizeFlorred / tileSize) {
+		errors.emplace_back("Too many textures for a single atlas texture size would be bigger than max OpenGl possible size 4096");
+		return { errors };
+	}
+
+	std::vector<std::vector<int>> tileMap = {};
+	tileMap.resize(rowsSize);
+	for (auto& row : tileMap) {
+		row.resize(colSize);
+	}
+
+	// Filling TileMap
+
+	Point lastFreeCell{ 0,0 }; // X = row Y = Column
+
+	auto tryInsert = [](std::vector<std::vector<int>>& tileMap, Point cell, int w, int h, int tileSize, int texIndex)->bool {
+		int rowsTaken = (h + tileSize - 1) / tileSize;
+		int colTaken = (w + tileSize - 1) / tileSize;
+
+		if (cell.x + rowsTaken > tileMap.size() || cell.y + colTaken > tileMap[0].size()) {
+			return false;
+		}
+
+		// Colison check
+		for (size_t i = cell.x; i < cell.x + rowsTaken; i++) {
+			for (size_t j = cell.y; j < cell.y + colTaken; j++) {
+				if (tileMap[i][j] != 0) {
+					return false;
+				}
+			}
+		}
+
+		// Inserting texture
+		for (size_t i = cell.x; i < cell.x + rowsTaken; i++) {
+			for (size_t j = cell.y; j < cell.y + colTaken; j++) {
+				tileMap[i][j] = texIndex + 1;
+			}
+		}
+
+		return true;
+	};
+
+	int currentTexIndex = 0;
+	while (currentTexIndex < texturesToMap.size()) {
+		MT::Texture* current = texturesToMap[currentTexIndex];
+		if (tryInsert(tileMap, lastFreeCell, current->w, current->h, tileSize, currentTexIndex)) {
+			currentTexIndex++;
+		}
+		lastFreeCell.y++;
+		if (lastFreeCell.y > tileMap[0].size() - 1) {
+			lastFreeCell.y = 0;
+			lastFreeCell.x++;
+			if (lastFreeCell.x > tileMap.size() -1) {
+				errors.emplace_back("Not all textures are fitting in the atlas it is broken");
+				return { errors };
+			}
+		}
+
+	}
+	
+
+	// Converting all textures to surfaces for atlas
+	std::vector<SDL_Surface*> surfaces;
+	surfaces.reserve(texturesToMap.size());
+	for (auto& tex : texturesToMap) {
+		surfaces.emplace_back(MT::TextureToSurface(tex));
+	}
+
+	// Creating map to remove already inserted textures
+	std::unordered_map<int, SDL_Surface*> texturesToInsert; // key texture id +1 (Just like in tile map)
+
+	for (int i = 0; i < surfaces.size(); i++) {
+		texturesToInsert[i + 1] = surfaces[i];
+	}
+	
+	// Creating atlas itself
+	SDL_Surface* atlas = SDL_CreateRGBSurfaceWithFormat(0,tileMap[0].size() * tileSize, tileMap.size() * tileSize, 32, SDL_PIXELFORMAT_RGBA32);
+
+	SDL_FillRect(atlas, NULL, SDL_MapRGBA(atlas->format, 0, 0, 0, 0));
+
+	// Coping surfaces to atlas
+
+	std::unordered_map<std::string, MT::Rect> sourceRectangles;
+	sourceRectangles.reserve(surfaces.size());
+
+	for (int i = 0; i < tileMap.size(); i++) { // row
+		for (int j = 0; j < tileMap[i].size(); j++) { // column
+			int cell = tileMap[i][j];
+			int rowPos = j * tileSize; // Swaped
+			int colPow = i * tileSize;
+			SDL_Rect dest{ rowPos,colPow,0,0 };
+			if (cell == 0) { continue;  }
+			auto mapIter = texturesToInsert.find(cell);
+			if (mapIter == texturesToInsert.end()) {
+				//Texture is already inserted
+				continue;
+			}
+			
+			sourceRectangles[textureNames[cell - 1]] = MT::Rect{ dest.x, dest.y, mapIter->second->w, mapIter->second->h };
+			SDL_BlitSurface(mapIter->second, NULL, atlas, &dest);
+			texturesToInsert.erase(mapIter);
+		}
+	}
+
+	// Removing the originals
+	if (deleteOriginals) {
+		for (auto& name : textureNames) {
+			TexMan::DeleteTexture(name);
+		}
+	}
+
+
+	// CleanUp and return
+	for (auto& surf : surfaces) {
+		SDL_FreeSurface(surf);
+	}
+	MT::Texture *atlasTex = MT::LoadTextureFromSurface(atlas);
+	SDL_FreeSurface(atlas);
+	return { atlasTex,sourceRectangles,errors };
+}
+
 void TexMan::Clear() {
 	for (auto& pair : Textures) {
 		MT::DeleteTexture(pair.second);
 		delete pair.second;
 	}
 	Textures.clear();
+	isInit = false;
+	SupportedFormats.clear();
+	renderer = nullptr;
+	MT::DeleteTexture(defaultTex);
 }
 
 //LocalTexMan
 bool LocalTexMan::Start(MT::Renderer* ren) {
 	renderer = ren;
 	if (renderer != nullptr) {
-		isInnit = true;
+		isInit = true;
 		SupportedFormats.emplace_back(".png");
 		SupportedFormats.emplace_back(".jpg");
 		SupportedFormats.emplace_back(".jpeg");
@@ -312,7 +521,7 @@ bool LocalTexMan::Start(MT::Renderer* ren) {
 		SupportedFormats.emplace_back(".cur");
 		SupportedFormats.emplace_back(".pcx");
 		SupportedFormats.emplace_back(".xpm");
-		return isInnit;
+		return isInit;
 	}
 
 	return false;
@@ -320,7 +529,7 @@ bool LocalTexMan::Start(MT::Renderer* ren) {
 
 
 bool LocalTexMan::IsWorking() {
-	return isInnit;
+	return isInit;
 }
 
 void LocalTexMan::Print() {
@@ -412,8 +621,8 @@ Point LocalTexMan::GetTextureSize(const std::string& name) {
 	Point p(-1, -1);
 	auto it = Textures.find(name);
 	if (it == Textures.end()) {
+		std::println("Texture not found: {}", name);
 		return p;
-		std::cerr << "Texture not found: " << name << "\n";
 	}
 	p.x = it->second->w;
 	p.y = it->second->h;
@@ -478,6 +687,7 @@ void LocalTexMan::SplitTexture(const char* path, const std::vector<std::string>&
 		index++;
 	}
 }
+
 
 void LocalTexMan::Clear() {
 	for (auto& pair : Textures) {

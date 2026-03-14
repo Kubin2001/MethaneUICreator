@@ -31,7 +31,7 @@ void Game::Start() {
 		Global::windowWidth, Global::windowHeight, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
 
 	renderer = new MT::Renderer();
-	renderer->Start(window, MT::Innit(window));
+	renderer->Start(window, MT::Init(window));
 
 	Global::defaultDrawColor[0] = 30;
 	Global::defaultDrawColor[1] = 30;
@@ -39,14 +39,14 @@ void Game::Start() {
 
 	TexMan::Start(renderer);
 	TexMan::DeepLoad("Textures");
-	SoundMan::Innit();
+	SoundMan::Init();
 	SoundMan::LoadSounds("Sounds");
 
 	ui = std::make_unique<UI>(renderer);
 
-	ui->CreateFont("arial40px", TexMan::GetTex("arial40px"), "Textures/Interface/Fonts/arial40px.json");
-	ui->CreateFont("arial20px", TexMan::GetTex("arial20px"), "Textures/Interface/Fonts/arial20px.json");
-	ui->CreateFont("arial12px", TexMan::GetTex("arial12px"), "Textures/Interface/Fonts/arial12px.json");
+	ui->CrateTempFontFromTTF("Fonts/arial.ttf", 12, "arial12px");
+	ui->CrateTempFontFromTTF("Fonts/arial.ttf", 12, "arial20px");
+	ui->CrateTempFontFromTTF("Fonts/arial.ttf", 12, "arial40px");
 
 
 	SceneMan::AddScene<ProgramScene>("ProgramScene");

@@ -322,11 +322,11 @@ void FontManager::ScanFont(const std::string& texturePath, const std::string& ch
 
 	Pixel font{ fR,fG,fB,255};
 
-	short maxX = -1;
-	short minX = 10000;
+	int maxX = -1;
+	int minX = 10000;
 
-	short maxY = -1;
-	short minY = 10000;
+	int maxY = -1;
+	int minY = 10000;
 
 
 	std::vector<SDL_Rect> jsonRectangles;
@@ -438,11 +438,11 @@ void CrateFontFromTTF(const char* ttfPath, const int size, const std::string& na
 	strCharset.reserve(100); // Nie wiem ile w sumie bo jeszcze nie wiem ile znaków trzymaæ
 
 	for (size_t i = 32; i < 127; i++) { // od 31 do 127 bo od 31 w dól znaki kontrolne i 127 do 159 tak samo
-		strCharset += charset[i];
+		strCharset += globalCharset[i];
 	}
 
 	for (size_t i = 160; i < 199; i++) { // dziwne znaki czy to wogóle zachowaæ nie wiem mo¿e opcja w funkcji?
-		strCharset += charset[i];
+		strCharset += globalCharset[i];
 	}
 
 
@@ -541,21 +541,39 @@ void CrateFontFromTTF(const char* ttfPath, const int size, const std::string& na
 	TTF_Quit();
 }
 
-void FontManager::CrateTempFontFromTTF(const char* ttfPath, const int size, const std::string& name, LocalTexMan* localTexMan) {
+bool FontManager::CrateTempFontFromTTF(const char* ttfPath, const int size, const std::string& name, LocalTexMan* localTexMan) {
 	TTF_Init();
 
+	auto cleanUp = [](std::vector<SDL_Surface*>& surfaces, SDL_Surface* surf, TTF_Font *font) {
+		SDL_FreeSurface(surf);
+		for (auto& it : surfaces) {
+			SDL_FreeSurface(it);
+		}
+		TTF_CloseFont(font);
+		TTF_Quit();
+	};
+
+	if (!std::filesystem::exists(ttfPath)) {
+		std::println("Incorrect path in FontManager::CrateTempFontFromTTF for {} ", ttfPath);
+		return false;
+	}
+
 	TTF_Font* font = TTF_OpenFont(ttfPath, size);
+	if (font == nullptr) {
+		std::println("Cannot load font FontManager::CrateTempFontFromTTF for {} ", ttfPath);
+		return false;
+	}
 
 	// Creating string containing all signs
 	std::string strCharset = "";
 	strCharset.reserve(100); // Nie wiem ile w sumie bo jeszcze nie wiem ile znaków trzymaæ
 
 	for (size_t i = 32; i < 127; i++) { // od 31 do 127 bo od 31 w dól znaki kontrolne i 127 do 159 tak samo
-		strCharset += charset[i];
+		strCharset += globalCharset[i];
 	}
 
 	for (size_t i = 160; i < 199; i++) { // dziwne znaki czy to wogóle zachowaæ nie wiem mo¿e opcja w funkcji?
-		strCharset += charset[i];
+		strCharset += globalCharset[i];
 	}
 
 
@@ -566,10 +584,10 @@ void FontManager::CrateTempFontFromTTF(const char* ttfPath, const int size, cons
 	std::vector<MT::Rect> sourceRectangles;
 	sourceRectangles.reserve(strCharset.size());
 
-	int x = 0;
-	int y = 0;
-
+	int w = 0;
+	int maxH = 0;
 	for (auto& it : strCharset) {
+
 		SDL_Surface* surf = TTF_RenderGlyph32_Blended(font, it, { 255,255,255,255 });
 		if (!surf) continue;
 
@@ -580,22 +598,31 @@ void FontManager::CrateTempFontFromTTF(const char* ttfPath, const int size, cons
 		SDL_SetSurfaceBlendMode(newSurf, SDL_BLENDMODE_NONE);
 		SDL_SetColorKey(newSurf, SDL_FALSE, 0);
 		surfaces.emplace_back(newSurf);
-		sourceRectangles.emplace_back(x, y, newSurf->w, newSurf->h);
-		x += newSurf->w + 1;
-	}
-
-	// Creating texture atlas from glyphs
-
-	int w = 0;
-	int maxH = 0;
-	for (auto& it : sourceRectangles) {
-		w += it.w + 1;
-		if (it.h >= maxH) {
-			maxH = it.h;
+		sourceRectangles.emplace_back(0, 0, newSurf->w, newSurf->h);
+		w += newSurf->w + 1;
+		if (newSurf->h >= maxH) {
+			maxH = newSurf->h;
 		}
 	}
 
-	SDL_Surface* atlas = SDL_CreateRGBSurfaceWithFormat(0, w, maxH, 32, SDL_PIXELFORMAT_RGBA32);
+	// Creating texture atlas from glyphs
+	constexpr int maxTextureWidth = 2000; // 2000 is quite small it can in theory be at most 4096 openGL max texture size
+
+	// Fix texture
+	int x = 0;
+	int y = 0;
+	for (auto& rect : sourceRectangles) {
+		if (x + rect.w + 1 > maxTextureWidth) {
+			x = 0;
+			y += maxH + 1;
+		}
+		rect.x = x;
+		rect.y = y;
+		x += rect.w + 1;
+	}
+
+
+	SDL_Surface* atlas = SDL_CreateRGBSurfaceWithFormat(0, maxTextureWidth, y +maxH +1, 32, SDL_PIXELFORMAT_RGBA32);
 	SDL_FillRect(atlas, nullptr, SDL_MapRGBA(atlas->format, 0, 0, 0, 0));
 
 	for (size_t i = 0; i < sourceRectangles.size(); i++) {
@@ -607,12 +634,15 @@ void FontManager::CrateTempFontFromTTF(const char* ttfPath, const int size, cons
 	
 	if (localTexMan == nullptr) {
 		if (!TexMan::AddTexture(tex, name)) {
-			throw std::runtime_error("Texture name already taken");
+			cleanUp(surfaces, atlas, font);
+			std::println("Texture name alrady taken use other name FontManager::CrateTempFontFromTTF for {} ", name);
+			return false;
 		}
 	}
 	else {
 		if (!localTexMan->AddTexture(tex, name)) {
-			throw std::runtime_error("Texture name already taken");
+			cleanUp(surfaces, atlas, font);
+			std::println("Texture name alrady taken use other name FontManager::CrateTempFontFromTTF for {} ", name);
 		}
 	}
 
@@ -620,8 +650,9 @@ void FontManager::CrateTempFontFromTTF(const char* ttfPath, const int size, cons
 	if (fonts.size() > 0) {
 		for (auto& it : fonts) {
 			if (it->GetName() == name) {
-				throw std::runtime_error("font with idenical name already exist");
-				return;
+				cleanUp(surfaces, atlas, font);
+				std::println("Font with the same name already exist  FontManager::CrateTempFontFromTTF for {} ", name);
+				return false;
 			}
 		}
 	}
@@ -630,12 +661,8 @@ void FontManager::CrateTempFontFromTTF(const char* ttfPath, const int size, cons
 
 
 	//Clean Up
-	SDL_FreeSurface(atlas);
-	for (auto& it : surfaces) {
-		SDL_FreeSurface(it);
-	}
-	TTF_CloseFont(font);
-	TTF_Quit();
+	cleanUp(surfaces, atlas, font);
+	return true;
 }
 
 FontManager::~FontManager() {

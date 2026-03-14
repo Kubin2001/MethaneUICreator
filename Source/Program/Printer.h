@@ -125,8 +125,8 @@ std::string AditionalToString(UIElemBase* button, UI* ui) {
 	return addString;
 }
 
-void SelectStrings(std::string &btnOutStr, std::string& getBtnStr, UIElemBase* button, int type) {
-	if (type == (int)CastType::Button) { // Button
+void SelectStrings(std::string &btnOutStr, std::string& getBtnStr, UIElemBase* button, CastType type) {
+	if (type == CastType::Button) { // Button
 		if (printerOutType == 1) {
 			if (firstBtn) {
 				btnOutStr = "Button *btn = ui->CreateButton(";
@@ -142,7 +142,7 @@ void SelectStrings(std::string &btnOutStr, std::string& getBtnStr, UIElemBase* b
 			getBtnStr = "\nui->GetButton(\"" + button->GetName() + "\")->";
 		}
 	}
-	else if (type == (int)CastType::TextBox) { // TextBox
+	else if (type == CastType::TextBox) { // TextBox
 		if (printerOutType == 1) {
 			if (firsttextBox) {
 				btnOutStr = "TextBox *tb = ui->CreateTextBox(";
@@ -158,7 +158,7 @@ void SelectStrings(std::string &btnOutStr, std::string& getBtnStr, UIElemBase* b
 			getBtnStr = "\nui->GetTextBox(\"" + button->GetName() + "\")->";
 		}
 	}
-	else if (type == (int)CastType::ClickBox) {
+	else if (type == CastType::ClickBox) {
 		if (printerOutType == 1) {
 			if (firstclickBox) {
 				btnOutStr = "ClickBox *cb = ui->CreateClickBox(";
@@ -174,7 +174,7 @@ void SelectStrings(std::string &btnOutStr, std::string& getBtnStr, UIElemBase* b
 			btnOutStr = "ui->CreateClickBox(";
 		}
 	}
-	else if (type == (int)CastType::PopUpBox) {
+	else if (type == CastType::PopUpBox) {
 		if (printerOutType == 1) {
 			if (firstpopUpBox) {
 				btnOutStr = "PopUpBox *pub = ui->CreatePopUpBox(";
@@ -200,7 +200,7 @@ std::string ButtonToString(UIElemBase* button, UI *ui, int renderType) {
 
 	btnOutput += "\"" + button->GetName() + "\"";
 	btnOutput += ',';
-	if (button->castType == (int)CastType::PopUpBox) {
+	if (button->castType == CastType::PopUpBox) {
 		PopUpBox* pb = static_cast<PopUpBox*>(button);
 		btnOutput += std::to_string(pb->GetLifeTime()) + ","; // Czas pop up boxa na ile wyskakuje 
 	}
@@ -256,7 +256,7 @@ std::string ButtonToString(UIElemBase* button, UI *ui, int renderType) {
 			, button->hoverFilter.B, button->hoverFilter.A, hooverSound);
 	}
 
-	if (button->castType == (int)CastType::ClickBox) {
+	if (button->castType == CastType::ClickBox) {
 		ClickBox* cb = static_cast<ClickBox*>(button);
 		if (!cb->IsOn()) {
 			cb->TurnOff();

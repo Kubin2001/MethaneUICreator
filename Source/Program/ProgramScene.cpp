@@ -15,7 +15,7 @@ void CreateErrorBox(UI* ui, const std::string& text) {
 
 	pb->SetColor(200, 200, 200);
 	pb->SetFontColor(255, 0, 0);
-	pb->SetRenderTextType(2);
+	pb->SetRenderTextType((int)TextRenderType::Centered);
 }
 
 void ProgramScene::Init(){
@@ -42,19 +42,19 @@ void ProgramScene::FrameUpdate(){
 	}
 	if (btnCreateList.IsExpanded()) {
 		if (btnCreateList[0]->ConsumeStatus()) {
-			CreateNewElem((int)CastType::Button);
+			CreateNewElem(CastType::Button);
 			return;
 		}
 		if (btnCreateList[1]->ConsumeStatus()) {
-			CreateNewElem((int)CastType::ClickBox);
+			CreateNewElem(CastType::ClickBox);
 			return;
 		}
 		if (btnCreateList[2]->ConsumeStatus()) {
-			CreateNewElem((int)CastType::TextBox);
+			CreateNewElem(CastType::TextBox);
 			return;
 		}
 		if (btnCreateList[3]->ConsumeStatus()) {
-			CreateNewElem((int)CastType::PopUpBox);
+			CreateNewElem(CastType::PopUpBox);
 			return;
 		}
 	}
@@ -182,7 +182,9 @@ void ProgramScene::FrameUpdate(){
 		}
 
 		if (ui->GetClickBox("KeyEditName")->ConsumeStatus()) {
-			ui->RenameElem(btn->GetName(), ui->GetTextBox("KeyEditNametb")->GetText());
+			if (!ui->RenameElem(btn->GetName(), ui->GetTextBox("KeyEditNametb")->GetText())) {
+				CreateErrorBox(ui, "Element with this name already exist");
+			}
 		}
 		else if (ui->GetClickBox("KeyEditX")->ConsumeStatus()) {
 			int val = 0;
@@ -330,7 +332,7 @@ void ProgramScene::FrameUpdate(){
 			btn->hoverSound = SoundMan::GetSound(ui->GetTextBox("KeyHooverSoundtb")->GetText());
 		}
 
-		if (btn->castType == (int)CastType::ClickBox) {
+		if (btn->castType == CastType::ClickBox) {
 			ClickBox* castedCB = static_cast<ClickBox*>(btn);
 			if (ui->ConsumeIfExist("KeyTurnedOn")) {
 				int val = castedCB->turnedOn;
@@ -350,7 +352,7 @@ void ProgramScene::FrameUpdate(){
 			}
 		}
 
-		if (btn->castType == (int)CastType::PopUpBox) {
+		if (btn->castType == CastType::PopUpBox) {
 			PopUpBox* castedPb = static_cast<PopUpBox*>(btn);
 			if (ui->ConsumeIfExist("KeyLifeTime")) {
 				int val = 0;
@@ -467,6 +469,9 @@ void ProgramScene::Input(SDL_Event& event){
 				}
 			}
 			if (elem != nullptr) {
+				if (elem = editedButton) {
+					HideEditPanel(elem);
+				}
 				std::string id = std::to_string(rand());
 				CreatedElement newElement(ui->CreateButton(elem->btn->GetName() + "copy" + id, 10, 10, 10, 10));
 				newElement.renderType = elem->renderType;
@@ -559,14 +564,14 @@ void ProgramScene::ShowPanel() {
 	ClickBox *cb = ui->CreateClickBox("BtnCreatorMain", x, y, w ,h, nullptr, ui->GetFont("arial20px"),"New");
 	cb->SetColor(30, 30, 30);
 	cb->SetBorder(2, 0, 100, 200);
-	cb->SetRenderTextType(2);
+	cb->SetRenderTextType((int)TextRenderType::Centered);
 	cb->SetHoverFilter(true, 255, 255, 255, 120);
-	btnCreateList.Innit(ui, cb, w, h, 30, 30, 30, { "Button","Click Box", "Text Box", "Pop Up Box" }, 1);
+	btnCreateList.Init(ui, cb, w, h, 30, 30, 30, { "Button","Click Box", "Text Box", "Pop Up Box" }, 1);
 
 	for (auto& it : btnCreateList.GetAll()) {
 		it->SetColor(30, 30, 30);
 		it->SetBorder(1, 0, 100, 200);
-		it->SetRenderTextType(2);
+		it->SetRenderTextType((int)TextRenderType::Centered);
 		it->SetHoverFilter(true, 255, 255, 255, 120);
 	}
 	y = 100;
@@ -751,7 +756,7 @@ void ProgramScene::ShowEditPanel(CreatedElement *button) {
 	CreateEditBox("KeyHooverSound", y, "HooverSound: ", hooverSound);
 
 
-	if (ebBtn->castType == (int)CastType::ClickBox) {
+	if (ebBtn->castType == CastType::ClickBox) {
 		ClickBox *castedElem = static_cast<ClickBox*>(ebBtn);
 		bool turnedOn = castedElem->turnedOn;
 		CreateEditBox("KeyTurnedOn", y, "Turned On: ", std::to_string(turnedOn));
@@ -760,7 +765,7 @@ void ProgramScene::ShowEditPanel(CreatedElement *button) {
 		CreateEditBox("KeyClickSound", y, "Click Sound: ", clickSound);
 	}
 
-	if (ebBtn->castType == (int)CastType::PopUpBox) {
+	if (ebBtn->castType == CastType::PopUpBox) {
 		PopUpBox* castedElem = static_cast<PopUpBox*>(ebBtn);
 		CreateEditBox("KeyLifeTime", y, "Life Time: ", std::to_string(castedElem->GetLifeTime()));
 	}
@@ -831,25 +836,25 @@ void ConvertElement(T* cBtn, UIElemBase* btn, UI *Ui) {
 	cBtn->SetFontColor(btn->fontRGB.R, btn->fontRGB.G, btn->fontRGB.B);
 }
 
-void ProgramScene::CreateNewElem(const int type) {
+void ProgramScene::CreateNewElem(CastType type) {
 	if (selectedButton != nullptr) { return; }
 	index++;
 	Point p = GetMousePos();
 
-	std::string name  = "btn" + std::to_string(index);
+	std::string indexStr = std::to_string(index);
 
 	switch (type) {
-		case (int)CastType::Button:
-			elements.emplace_back(ui->CreateButton(name, p.x - 50, p.y - 50, 100, 100));
+		case CastType::Button:
+			elements.emplace_back(ui->CreateButton("btn" + indexStr, p.x - 50, p.y - 50, 100, 100));
 			break;
-		case (int)CastType::ClickBox:
-			elements.emplace_back(ui->CreateClickBox(name, p.x - 50, p.y - 50, 100, 100));
+		case CastType::ClickBox:
+			elements.emplace_back(ui->CreateClickBox("cb" + indexStr, p.x - 50, p.y - 50, 100, 100));
 			break;
-		case (int)CastType::TextBox:
-			elements.emplace_back(ui->CreateTextBox(name, p.x - 50, p.y - 50, 100, 100));
+		case CastType::TextBox:
+			elements.emplace_back(ui->CreateTextBox("tb" + indexStr, p.x - 50, p.y - 50, 100, 100));
 			break;
-		case (int)CastType::PopUpBox:
-			elements.emplace_back(ui->CreatePopUpBox(name, 120, p.x - 50, p.y - 50, 100, 100));
+		case CastType::PopUpBox:
+			elements.emplace_back(ui->CreatePopUpBox("pb" + indexStr, 120, p.x - 50, p.y - 50, 100, 100));
 			break;
 	}
 
@@ -871,7 +876,7 @@ void ProgramScene::MoveSelected() {
 void ProgramScene::CreateOutputSubPanel() {
 	currentSection.Clear();
 	Button *btn = ui->CreateButton("outBtnBack", 100, 100, 300, 300,nullptr,ui->GetFont("arial20px"),"OutputOptions",1.0f,0,10);
-	btn->SetRenderTextType(4);
+	btn->SetRenderTextType((int)TextRenderType::CenteredX);
 	btn->SetColor(50, 30, 50, 255);
 	btn->SetBorder(2, 100, 100, 255);
 	currentSection.Add(btn);
@@ -883,29 +888,29 @@ void ProgramScene::CreateOutputSubPanel() {
 	};
 
 	ClickBox *cb = ui->CreateClickBox("btnRefOpt", 120, 160, 60, 60, nullptr, ui->GetFont("arial12px"), "Reference", 1.0f, 0, -15);
-	cb->SetRenderTextType(4);
+	cb->SetRenderTextType((int)TextRenderType::CenteredX);
 	cb->SetColor(255, 0, 0, 255);
 	Adjust(cb);
 
 	cb = ui->CreateClickBox("brnDirOut", 220, 160, 60, 60, nullptr, ui->GetFont("arial12px"), "Direct", 1.0f, 0, -15);
-	cb->SetRenderTextType(4);
+	cb->SetRenderTextType((int)TextRenderType::CenteredX);
 	cb->SetColor(0, 255, 0, 255);
 	Adjust(cb);
 
 	cb = ui->CreateClickBox("outJsonCb", 320, 160, 60, 60, nullptr, ui->GetFont("arial12px"), "Json", 1.0f, 0, -15);
-	cb->SetRenderTextType(4);
+	cb->SetRenderTextType((int)TextRenderType::CenteredX);
 	cb->SetColor(255, 0, 0, 255);
 	Adjust(cb);
 
 	TextBox *tb = ui->CreateTextBox("outNameBtn", 200, 240, 100, 50, nullptr, ui->GetFont("arial12px"), "Enter Name");
-	tb->SetRenderTextType(2);
+	tb->SetRenderTextType((int)TextRenderType::CenteredX);
 	tb->SetColor(70, 30, 70, 255);
 	tb->SetBorder(1, 100, 100, 255);
 	tb->SetHoverFilter(true, 255, 255, 255, 120, "hoverSound");
 	currentSection.Add(tb);
 
 	cb = ui->CreateClickBox("outConfBtn", 200, 320, 100, 50, nullptr, ui->GetFont("arial20px"), "Confirm");
-	cb->SetRenderTextType(2);
+	cb->SetRenderTextType((int)TextRenderType::CenteredX);
 	cb->SetColor(70, 30, 70, 255);
 	Adjust(cb);
 	outInPanel = 1;
@@ -920,7 +925,7 @@ void ProgramScene::HideOutputSubPanel() {
 void ProgramScene::CreateInputSubPanel() {
 	currentSection.Clear();
 	Button* btn = ui->CreateButton("outBtnBack", 100, 100, 150, 150, nullptr, ui->GetFont("arial20px"), "OutputOptions", 1.0f, 0, 10);
-	btn->SetRenderTextType(4);
+	btn->SetRenderTextType((int)TextRenderType::CenteredX);
 	btn->SetColor(50, 30, 50, 255);
 	btn->SetBorder(2, 100, 100, 255);
 	currentSection.Add(btn);
@@ -932,7 +937,7 @@ void ProgramScene::CreateInputSubPanel() {
 		};
 
 	ClickBox* cb = ui->CreateClickBoxF("loadJson", 120, 160, 60, 60, nullptr, "arial12px", "Load Json", 1.0f, 0, -15);
-	cb->SetRenderTextType(4);
+	cb->SetRenderTextType((int)TextRenderType::CenteredX);
 	cb->SetColor(255, 0, 0, 255);
 	Adjust(cb);
 	outInPanel = 2;

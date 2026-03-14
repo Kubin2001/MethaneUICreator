@@ -4,6 +4,19 @@
 #include <print>
 #include <filesystem>
 
+std::string BreakLines(const std::string& input, std::size_t every) {
+	std::string out;
+	out.reserve(input.size() + input.size() / every);
+
+	for (size_t i = 0; i < input.size(); ++i) {
+		if (i > 0 && i % every == 0) {
+			out += '\n';
+		}		
+		out += input[i];
+	}
+	return out;
+}
+
 std::vector<std::string> ReadCsvLine(const std::string& line, const char separator) {
 	std::vector<std::string> items;
 	std::string temp = "";
@@ -42,17 +55,53 @@ FileExplorer::FileExplorer(int scroolSpeed, const std::vector<std::string> exten
 	this->extensionFilter = extensionFilter;
 }
 
-void FileExplorer::CreateElement(int x, int y, const std::string& dirPath, const std::string& dirName, const std::string& texture) {
-	folderElements.emplace_back(ui->CreateClickBox(dirPath, x, y, 20, 20,
-		texMan.GetTex(texture), ui->GetFont("arial12px")
-		, dirName, 1.0f, 25, 5));
-	folderElements.back()->SetHoverFilter(1, 255, 255, 255, 70);
+void FileExplorer::CreateElement(int x, int y, const std::string& dirPath, const std::string& dirName, const std::string& texture
+	, const std::string &extension) {
+
+	MT::Texture *usedTexture = nullptr;
+	auto extIter = extensionsTextures.find(extension);
+	if (extIter == extensionsTextures.end()) {
+		usedTexture = texMan.GetTex(texture);
+	}
+	else {
+		usedTexture = extIter->second;
+	}
+
+	folderElements.emplace_back(ui->CreateClickBox(dirPath, x, y, 20, 20, usedTexture));
+	ClickBox* cb = folderElements.back();
+	cb->SetHoverFilter(1, 255, 255, 255, 70);
 
 	folderElementsNames.emplace_back(ui->CreateClickBox("Name" + dirPath, x + 20, y, 300 - 75, 20,
-		nullptr, ui->GetFont("arial12px")
-		, "", 1.0f, 25, 5));
-	folderElementsNames.back()->SetColor(255, 255, 255, 0);
-	folderElementsNames.back()->SetHoverFilter(1, 255, 255, 255, 70);
+		nullptr, ui->GetFont("arial12px"), dirName,1.0f,5));
+	cb = folderElementsNames.back();
+	cb->SetColor(255, 255, 255, 0);
+	cb->SetHoverFilter(true, 255, 255, 255, 70);
+	cb->SetRenderTextType((int)TextRenderType::CenteredY);
+}
+
+static std::unordered_map<std::string, MT::Texture*> LoadExtensionTextures(LocalTexMan *texMan) {
+	std::unordered_map<std::string, MT::Texture*> extensions;
+	if (!std::filesystem::exists("Common")) {
+		std::filesystem::create_directory("Common");
+		return extensions;
+	}
+	if (!std::filesystem::exists("Common/fileSystemExtensions.csv")) {
+		std::ofstream file("Common/fileSystemExtensions.csv");
+		return extensions;
+	}
+	std::ifstream file("Common/fileSystemExtensions.csv");
+	std::vector<std::vector<std::string>> readedTexturesNames =  ReadCsv("Common/fileSystemExtensions.csv");
+	for (auto& csvLine : readedTexturesNames) {
+		if (csvLine.size() != 2) { continue; }
+
+		std::string extension = csvLine[0];
+		std::string texName = csvLine[1];
+		MT::Texture* tex = texMan->GetTex(texName);
+		if (tex != nullptr) {
+			extensions[extension] = tex;
+		}
+	}
+	return extensions;
 }
 
 std::string FileExplorer::Open(const std::string& path) {
@@ -60,7 +109,7 @@ std::string FileExplorer::Open(const std::string& path) {
 	window = SDL_CreateWindow("FileWindow", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
 		300, 300, SDL_WINDOW_SHOWN | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_OPENGL);
 	renderer = new MT::Renderer();
-	renderer->Start(window, MT::Innit(window));
+	renderer->Start(window, MT::Init(window));
 
 	std::filesystem::path current;
 	if (std::filesystem::exists(path)) {
@@ -72,12 +121,17 @@ std::string FileExplorer::Open(const std::string& path) {
 
 	currentPath = current.string();
 	texMan.Start(renderer);
-	texMan.LoadMultiple("Textures/FileExplorer");
+	texMan.DeepLoad("Textures/FileExplorer");
 	ui = new UI(renderer);
 	ui->CrateTempFontFromTTF("Fonts/arial.ttf", 12, "arial12px",&texMan);
 
-	ui->CreateClickBox("ArrowLeft", 10, 10, 30, 20, nullptr, ui->GetFont("arial12px"), "<-");
-	ui->GetClickBox("ArrowLeft")->SetColor(60, 60, 60);
+	extensionsTextures = LoadExtensionTextures(&texMan);
+
+	ClickBox *cb =  ui->CreateClickBox("ArrowLeft", 10, 10, 30, 20, nullptr, ui->GetFont("arial12px"), "<-");
+	cb->SetColor(60, 60, 60);
+	cb = ui->CreateClickBox("RetPathCheckBox", 10, 50, 30, 30);
+	cb->SetColor(255, 0, 0);
+	cb->SetHoverFilter(true, 255, 255, 255, 120);
 
 	selectedBox = ui->CreateButton("selectionButton", 50, 100, 300, 20, nullptr);
 	selectedBox->SetColor(135, 206, 250, 150);
@@ -146,6 +200,18 @@ void FileExplorer::Input() {
 		Update();
 	}
 
+	ClickBox* retPathCb = ui->GetClickBox("RetPathCheckBox");
+	if (retPathCb->ConsumeStatus()) {
+		retPath = "";
+	}
+	if (retPath.empty()) {
+		retPathCb->SetColor(255, 0, 0);
+	}
+	else {
+		retPathCb->SetColor(0, 255, 0);
+	}
+
+
 	for (size_t i = 0; i < folderElements.size(); ++i) {
 		if (folderElements[i]->ConsumeStatus() || folderElementsNames[i]->ConsumeStatus()) {
 			std::string temp = std::filesystem::path(folderElements[i]->GetName()).string();
@@ -173,7 +239,15 @@ void FileExplorer::Input() {
 				selectedElement = folderElements[i];
 				selectedBox->GetRectangle().y = selectedElement->GetRectangle().y;
 				selectedBox->Show();
+				retPath = temp;
 			}
+		}
+	}
+	if (ClickBox* cb = ui->GetClickBox("RetPathCheckBox")) {
+		if (cb->IsHovered() && !retPath.empty()) {
+			Point mouse = GetMousePos();
+			std::string breakPath = BreakLines(retPath,35);
+			ui->RenderRawText(ui->GetFont("arial12px"), mouse.x, mouse.y, breakPath, 15, 200, 200, 200);
 		}
 	}
 }
@@ -203,12 +277,13 @@ void FileExplorer::Update() {
 	int y = 10;
 
 	for (auto& dir : std::filesystem::directory_iterator(currentPath)) {
+		std::filesystem::path path = dir.path();
 		if (dir.is_directory()) {
-			CreateElement(x, y, dir.path().string(), dir.path().filename().string(), "FeFolderIcon");
+			CreateElement(x, y, path.string(), path.filename().string(), "FeFolderIcon", path.extension().string());
 		}
 		else {
-			if (ExtensionAllowed(dir.path().extension().string())) {
-				CreateElement(x, y, dir.path().string(), dir.path().filename().string(), "FeFileIcon");
+			if (ExtensionAllowed(path.extension().string())) {
+				CreateElement(x, y, path.string(), path.filename().string(), "FeFileIcon", path.extension().string());
 			}
 			else {
 				continue;

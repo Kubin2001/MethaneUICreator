@@ -25,7 +25,7 @@ enum class ColorType {
 
 namespace MT {
 
-	SDL_GLContext Innit(SDL_Window* window);
+	SDL_GLContext Init(SDL_Window* window);
 
 	struct Color {
 		unsigned char R = 0, G = 0, B = 0;
@@ -107,6 +107,8 @@ namespace MT {
 
 	Texture* LoadTextureFromSurface(SDL_Surface* surf);
 
+	SDL_Surface* TextureToSurface(Texture* texture);
+
 	struct ConstextGuard {
 		SDL_Window* window;
 		SDL_GLContext context;
@@ -135,8 +137,8 @@ namespace MT {
 
 		private:
 		SDL_Window* window = nullptr;
-		Rect vievPort;
-		unsigned int VAO, VBO;
+		Rect vievPort{0,0,0,0};
+		unsigned int VAO = 0, VBO = 0;
 		ShaderLoader loader;
 		//Shaders IDs
 		unsigned int currentProgram;
@@ -152,6 +154,7 @@ namespace MT {
 		unsigned int renderCopyRoundedRectId = 0;
 		unsigned int renderBorderId = 0;
 		unsigned int renderRoundedBorderId = 0;
+		unsigned int renderMaskedId = 0;
 		unsigned int uprId = 0;
 
 		//Uniforms Ids
@@ -160,6 +163,7 @@ namespace MT {
 		unsigned int roundRectCopyRadius = 0;
 		unsigned int roundBorderRadius = 0;
 		unsigned int roundRoundedBorderRadius = 0;
+		unsigned int currentMaskTexture = 0;
 
 		//Uniforms Values
 		glm::vec2 roundRectRadiusVal = { 0.0f,0.0f };
@@ -190,6 +194,8 @@ namespace MT {
 		void LoadShaders();
 
 		void ExpandUpr(float* vertices);
+
+		void CheckUPRProgram();
 
 		public:
 		int W, H;
@@ -233,6 +239,8 @@ namespace MT {
 
 		void RenderRoundedBorder(const Rect& rect, const Color& col, const int width, const unsigned char alpha = 255);
 
+		void RenderMaskedOverlay(const Rect& rect, const Rect &sourceRect, const Texture* tex1, const Texture* tex2);
+
 		//UPR Universal Pipeline Render does not change shader ever so it is much faster in shader switch rendering but slower overall
 		void RenderRectUPR(const Rect& rect, const Color& col, const int alpha = 255);
 
@@ -261,6 +269,8 @@ namespace MT {
 		void RenderBorderUPR(const Rect& rect, const Color& col, const int width, const unsigned char alpha = 255);
 
 		void RenderRoundedBorderUPR(const Rect& rect, const Color& col, const int width, const unsigned char alpha = 255);
+
+		void RenderMaskedOverlayUPR(const Rect& rect, const Rect &sourceRect, const Texture* tex1, const Texture* tex2);
 
 		//UPR
 
