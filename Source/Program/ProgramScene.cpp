@@ -57,6 +57,10 @@ void ProgramScene::FrameUpdate(){
 			CreateNewElem(CastType::PopUpBox);
 			return;
 		}
+		if (btnCreateList[4]->ConsumeStatus()) {
+			CreateNewElem(CastType::Slider);
+			return;
+		}
 	}
 	if (panelType == 1) {
 		if (ui->GetClickBox("BackRgb")->ConsumeStatus()) {
@@ -182,8 +186,10 @@ void ProgramScene::FrameUpdate(){
 		}
 
 		if (ui->GetClickBox("KeyEditName")->ConsumeStatus()) {
-			if (!ui->RenameElem(btn->GetName(), ui->GetTextBox("KeyEditNametb")->GetText())) {
-				CreateErrorBox(ui, "Element with this name already exist");
+			if (btn->GetName() != ui->GetTextBox("KeyEditNametb")->GetText()) {
+				if (!ui->RenameElem(btn->GetName(), ui->GetTextBox("KeyEditNametb")->GetText())) {
+					CreateErrorBox(ui, "Element with this name already exist");
+				}
 			}
 		}
 		else if (ui->GetClickBox("KeyEditX")->ConsumeStatus()) {
@@ -358,6 +364,33 @@ void ProgramScene::FrameUpdate(){
 				int val = 0;
 				if (ArgToInt(ui->GetTextBox("KeyLifeTimetb")->GetText(), val)) {
 					castedPb->SetLifeTime(val);
+				}
+			}
+		}
+		if (btn->castType == CastType::Slider) {
+			Slider* castedSl = static_cast<Slider*>(btn);
+			if (ui->ConsumeIfExist("KeySlideType")) {
+				std::string& val = ui->GetElem("KeySlideTypetb")->GetText();
+				if (val == "X") {
+					castedSl->SetSlideType(0);
+				}
+				else if (val == "Y") {
+					castedSl->SetSlideType(1);
+				}
+				else {
+					castedSl->SetSlideType(0);
+				}
+			}
+			if (ui->ConsumeIfExist("KeyMin")) {
+				int val = 0;
+				if (ArgToInt(ui->GetElem("KeyMintb")->GetText(), val)) {
+					castedSl->SetMin(val);
+				}
+			}
+			if (ui->ConsumeIfExist("KeyMax")) {
+				int val = 0;
+				if (ArgToInt(ui->GetElem("KeyMaxtb")->GetText(), val)) {
+					castedSl->SetMax(val);
 				}
 			}
 		}
@@ -566,7 +599,7 @@ void ProgramScene::ShowPanel() {
 	cb->SetBorder(2, 0, 100, 200);
 	cb->SetRenderTextType((int)TextRenderType::Centered);
 	cb->SetHoverFilter(true, 255, 255, 255, 120);
-	btnCreateList.Init(ui, cb, w, h, 30, 30, 30, { "Button","Click Box", "Text Box", "Pop Up Box" }, 1);
+	btnCreateList.Init(ui, cb, w, h, 30, 30, 30, { "Button","Click Box", "Text Box", "Pop Up Box","Slider"}, 1);
 
 	for (auto& it : btnCreateList.GetAll()) {
 		it->SetColor(30, 30, 30);
@@ -770,6 +803,13 @@ void ProgramScene::ShowEditPanel(CreatedElement *button) {
 		CreateEditBox("KeyLifeTime", y, "Life Time: ", std::to_string(castedElem->GetLifeTime()));
 	}
  
+	if (ebBtn->castType == CastType::Slider) {
+		Slider* castedElem = static_cast<Slider*>(ebBtn);
+		CreateEditBox("KeySlideType", y, "Slide Type: ", std::to_string(castedElem->GetSlideType()));
+		CreateEditBox("KeyMin", y, "Min: ", std::to_string(castedElem->GetMin()));
+		CreateEditBox("KeyMax", y, "Max: ", std::to_string(castedElem->GetMax()));
+	}
+
 
 	// Additional Settings
 	auto setDefault = [](ClickBox* cb) {
@@ -778,7 +818,6 @@ void ProgramScene::ShowEditPanel(CreatedElement *button) {
 		cb->SetTextStartX(-100);
 		cb->SetTextStartY(10);
 		cb->Hide();
-		//cb->SetRenderType(2);
 	};
 
 	currentSection.Add(ui->CreateClickBoxF("XAxisToogle",Global::windowWidth -100,100,30,30,nullptr,"arial12px", "X Axis Block"));
@@ -855,6 +894,9 @@ void ProgramScene::CreateNewElem(CastType type) {
 			break;
 		case CastType::PopUpBox:
 			elements.emplace_back(ui->CreatePopUpBox("pb" + indexStr, 120, p.x - 50, p.y - 50, 100, 100));
+			break;
+		case CastType::Slider:
+			elements.emplace_back(ui->CreateSlider("sl" + indexStr,p.x - 50, p.y - 50, 100, 100,(int)SliderSlide::X, p.x-100,p.x + 200));
 			break;
 	}
 

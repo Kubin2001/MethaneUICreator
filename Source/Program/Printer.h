@@ -9,6 +9,7 @@ bool firstBtn = false;
 bool firsttextBox = false;
 bool firstclickBox = false;
 bool firstpopUpBox = false;
+bool firstSlider = false;
 int printerOutType = 1;
 
 std::string AditionalToString(UIElemBase* button, UI* ui) {
@@ -190,6 +191,22 @@ void SelectStrings(std::string &btnOutStr, std::string& getBtnStr, UIElemBase* b
 			getBtnStr = "\nui->GetPopUpBox(\"" + button->GetName() + "\")->";
 		}
 	}
+	else if (type == CastType::Slider) {
+		if (printerOutType == 1) {
+			if (firstpopUpBox) {
+				btnOutStr = "Slider *sl = ui->CreateSlider(";
+				firstpopUpBox = false;
+			}
+			else {
+				btnOutStr = "sl = ui->CreateSlider(";
+			}
+			getBtnStr = "sl->";
+		}
+		else {
+			btnOutStr = "ui->CreateSlider(";
+			getBtnStr = "\nui->GetSlider(\"" + button->GetName() + "\")->";
+		}
+	}
 }
 
 std::string ButtonToString(UIElemBase* button, UI *ui, int renderType) {
@@ -264,6 +281,15 @@ std::string ButtonToString(UIElemBase* button, UI *ui, int renderType) {
 		}
 		if (cb->clickSound != "") {
 			btnOutput += std::format("{}SetClickSound(\"{}\");\n", getBtnStr, cb->clickSound);
+		}
+	}
+	if (button->castType == CastType::Slider) {
+		Slider* sl = static_cast<Slider*>(button);
+		if (sl->GetSlideType() == 0) {
+			btnOutput += std::format("{}SetSlideType({});\n", getBtnStr, sl->GetSlideType());
+		}
+		else {
+			btnOutput += std::format("{}SetSlideType({});\n", getBtnStr, sl->GetSlideType());
 		}
 	}
 
